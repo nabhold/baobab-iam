@@ -1,0 +1,22 @@
+{
+  "clientId": "baobab-cms",
+  "name": "Baobab CMS Workload",
+  "description": "Workload identity for the CMS engine",
+  "enabled": true,
+  "publicClient": false,
+  "bearerOnly": false,
+  "serviceAccountsEnabled": true,
+  "protocol": "openid-connect",
+  "directAccessGrantsEnabled": false,
+  "implicitFlowEnabled": false,
+  "standardFlowEnabled": false,
+  "attributes": {
+    "oauth2.device.authorization.grant.enabled": "false",
+    "backchannel.logout.session.required": "false",
+    "backchannel.logout.revoke.offline.tokens": "false"
+  },
+  "authenticationFlowBindingOverrides": {},
+  "defaultClientScopes": ["web-origins", "acr", "profile", "email", "roles", "openid"],
+  "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"],
+  "serviceAccountsClientId": "baobab-cms"
+}
