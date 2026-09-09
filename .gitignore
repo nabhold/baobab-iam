@@ -1,0 +1,11 @@
+# .gitignore
+.env
+*.log
+*.pid
+*.tmp
+data/
+.dockerignore
+.idea/
+.vscode/
+*.swp
+.DS_Store

@@ -1,0 +1,24 @@
+{
+  "clientId": "thamani-web",
+  "name": "Thamani Web",
+  "description": "B2C Digital Estate frontend",
+  "enabled": true,
+  "publicClient": true,
+  "bearerOnly": false,
+  "serviceAccountsEnabled": false,
+  "protocol": "openid-connect",
+  "directAccessGrantsEnabled": false,
+  "implicitFlowEnabled": false,
+  "standardFlowEnabled": true,
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "oauth2.device.authorization.grant.enabled": "false",
+    "backchannel.logout.session.required": "true",
+    "backchannel.logout.revoke.offline.tokens": "false"
+  },
+  "authenticationFlowBindingOverrides": {},
+  "defaultClientScopes": ["web-origins", "acr", "profile", "email", "roles", "openid"],
+  "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"],
+  "redirectUris": ["http://localhost:3001/*"],
+  "webOrigins": ["http://localhost:3001"]
+}

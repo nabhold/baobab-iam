@@ -1,0 +1,6 @@
+# contracts.lock.yaml – pins the Shared contract versions this repository implements
+version: 1
+contracts:
+  - source: nabhold/shared
+    tag: v1.2.0
+    sha: <SHA>

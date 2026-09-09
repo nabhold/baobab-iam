@@ -1,0 +1,7 @@
+# upstream.lock.yaml
+# Pins the exact Keycloak version and container digest for production.
+keycloak:
+  version: "26.7.3"
+  image: "quay.io/keycloak/keycloak"
+  digest: "sha256:0b8a8b9c1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9"
+  # Yes, the digest above is an example; we will replace it with the actual SHA after pulling.

@@ -1,0 +1,63 @@
+# docker-compose.yml – local development stack
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: baobab-iam-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-baobab_iam}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-baobab_iam}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-baobab_iam}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: baobab-iam-keycloak
+    environment:
+      # Database
+      KC_DB: postgres
+      KC_DB_URL: ${KC_DB_URL:-jdbc:postgresql://postgres:5432/${POSTGRES_DB:-baobab_iam}}
+      KC_DB_USERNAME: ${POSTGRES_USER:-baobab_iam}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      # Admin
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      # Hostname
+      KC_HOSTNAME: ${KC_HOSTNAME:-localhost}
+      KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT:-8080}
+      KC_HOSTNAME_STRICT: ${KC_HOSTNAME_STRICT:-false}
+      # Logging
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL:-INFO}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/keycloak/bin/kc.sh health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
+  # Optional: a simple test client to verify OIDC endpoints
+  # test-client:
+  #   image: curlimages/curl
+  #   depends_on:
+  #     keycloak:
+  #       condition: service_healthy
+  #   command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+
+volumes:
+  postgres_data:
+  keycloak_data:

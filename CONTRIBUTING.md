@@ -1,20 +1,34 @@
-<!-- Target path: nabhold/engine-template/CONTRIBUTING.md (becomes <new-repo>/CONTRIBUTING.md in any repo created from this template). -->
+# Contributing to Baobab IAM
 
-# Contributing
+Thank you for contributing! Please follow these guidelines.
 
-This repository follows the `nabhold` org's standard workflow:
+## Code of Conduct
 
-- All changes land through a pull request against `main` — no direct pushes.
-- At least one CODEOWNERS-required review is mandatory (see
-  `.github/CODEOWNERS`); files shared with `nabhold/shared` contracts may
-  require two.
-- Required CI status checks (once activated — see `TEMPLATE-USAGE.md`) must
-  pass before merge.
-- Development happens inside the `baobab-dev` devcontainer declared in
-  `.devcontainer/devcontainer.json` — see that file and
-  `.nabhold/environment.yaml` for the exact toolchain this repo expects.
-- Keep `CHANGELOG.md` current — add one once this repo starts cutting
-  releases; it doesn't need one while still scaffolded.
+This project adheres to the [NABHOLD Code of Conduct](./CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
 
-Nothing else is engine-specific yet. Replace or extend this file once this
-repo has real build/test/lint commands worth documenting.
+## How to contribute
+
+1. **Open an issue** – discuss the change before writing code.
+2. **Fork the repository** and create a branch from `main`.
+3. **Write code and tests** – ensure all CI checks pass.
+4. **Open a pull request** against `main`. Reference the issue.
+5. **Sign off** your commits (`git commit -s`) to certify the Developer Certificate of Origin.
+
+## Development setup
+
+Follow the [README](./README.md) to set up the local environment.
+
+## Pull request requirements
+
+- All commits must be signed.
+- CI must pass (lint, tests, security scanning).
+- Documentation must be updated for user‑facing changes.
+- Include a clear description of the change and its impact.
+
+## Security
+
+Do not introduce new dependencies without justification. Pin all external actions and packages.
+
+## Licensing
+
+All contributions are licensed under Apache‑2.0.
