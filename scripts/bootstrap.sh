@@ -24,6 +24,17 @@ else
   echo "Realm 'baobab' already exists. Skipping creation."
 fi
 
+# Import workload clients (service accounts)
+for client_file in /opt/keycloak/config/clients/*-workload.json; do
+  if [ -f "$client_file" ]; then
+    CLIENT_ID=$(jq -r '.clientId' "$client_file")
+    echo "Creating workload client '$CLIENT_ID' ..."
+    /opt/keycloak/bin/kcadm.sh create clients -r baobab -f "$client_file" || echo "Client '$CLIENT_ID' may already exist; skipping."
+    # Regenerate client secret if needed
+    # /opt/keycloak/bin/kcadm.sh set-password --realm baobab --client "$CLIENT_ID" --new-password "$(openssl rand -base64 32)"
+  fi
+done
+
 # Import clients
 for client_file in /opt/keycloak/config/clients/*.json; do
   if [ -f "$client_file" ]; then
