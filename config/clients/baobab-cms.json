@@ -1,0 +1,21 @@
+{
+  "clientId": "baobab-cms",
+  "name": "Baobab CMS",
+  "description": "CMS engine client (Payload)",
+  "enabled": true,
+  "publicClient": false,
+  "bearerOnly": true,
+  "serviceAccountsEnabled": false,
+  "protocol": "openid-connect",
+  "directAccessGrantsEnabled": false,
+  "implicitFlowEnabled": false,
+  "standardFlowEnabled": false,
+  "attributes": {
+    "oauth2.device.authorization.grant.enabled": "false",
+    "backchannel.logout.session.required": "true",
+    "backchannel.logout.revoke.offline.tokens": "false"
+  },
+  "authenticationFlowBindingOverrides": {},
+  "defaultClientScopes": ["web-origins", "acr", "profile", "email", "roles", "openid"],
+  "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+}

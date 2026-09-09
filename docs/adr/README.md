@@ -1,17 +1,22 @@
-<!-- Target path: nabhold/engine-template/docs/adr/README.md (becomes <new-repo>/docs/adr/README.md in any repo created from this template). -->
+# Architecture Decision Records (ADRs)
 
-# ADRs
+This directory contains the ADRs for Baobab IAM.
 
-Ecosystem-level decisions (new engines, cross-repo contract changes, org-wide
-tooling like this template) are recorded centrally as numbered ADRs in
-`nabhold/shared/docs/adr/`, continuing that repo's existing sequence — not
-here. This engine's own scaffolding decision (its addition to the ecosystem)
-should have an entry there; see `README.md`'s "ADR-000N" reference.
-
-Whether *this repo* should also keep repo-local ADRs for engine-internal
-decisions (as opposed to ecosystem-level ones) is not yet a settled
-convention — `nabhold/shared`'s governance strategy flags "is
-`nabhold/shared/docs/adr/` meant to be the single ADR log for the whole org,
-or just for contract-schema decisions specifically?" as still open. Until
-that's resolved, don't assume this folder is the right place for a
-repo-local decision log — check with whoever owns that governance doc first.
+- [ADR-0001: Baobab Identity and Access Management Architecture](./0001-baobab-iam-platform.md)
+- [ADR-0002: Keycloak as the Baobab Identity Provider](./0002-keycloak-as-idp.md)
+- [ADR-0003: Identity Authority and Trust Boundaries](./0003-identity-authority-trust-boundaries.md)
+- [ADR-0004: Canonical Identity and External Identity Mapping](./0004-canonical-identity-external-mapping.md)
+- [ADR-0005: Realm, Organization, Tenant and Legal-Entity Model](./0005-realm-org-tenant-legalentity-model.md)
+- [ADR-0006: OIDC, OAuth and Token Profile](./0006-oidc-oauth-token-profile.md)
+- [ADR-0007: Workload Identity and Service-to-Service Authentication](./0007-workload-identity.md)
+- [ADR-0008: Platform Authorization Architecture](./0008-platform-authorization.md)
+- [ADR-0009: Workforce SSO and Privileged Access](./0009-workforce-sso-privileged-access.md)
+- [ADR-0010: Zuribeans B2B Identity and Organization Access](./0010-zuribeans-b2b.md)
+- [ADR-0011: Thamani B2C Customer Identity](./0011-thamani-b2c.md)
+- [ADR-0012: Supplier Identity and Representative Access](./0012-supplier-identity.md)
+- [ADR-0013: MedusaJS Authentication Integration](./0013-medusa-auth.md)
+- [ADR-0014: iDempiere SSO and ERP Identity Mapping](./0014-idempiere-sso.md)
+- [ADR-0015: Credential Security, MFA, Passkeys and Account Recovery](./0015-credential-security-mfa-passkeys.md)
+- [ADR-0016: Identity Lifecycle, Revocation and Deprovisioning](./0016-identity-lifecycle.md)
+- [ADR-0017: IAM Audit, Security Events and Observability](./0017-iam-audit-observability.md)
+- [ADR-0018: IAM Availability, Backup, Recovery and Disaster Resilience](./0018-iam-availability-backup-recovery.md)
