@@ -128,6 +128,24 @@ by the general `*.json` glob on the next loop — harmless today only because th
 `kcadm.sh create` attempt is swallowed by `|| echo ... skipping`, which also means a real
 failure on the second pass would be silently masked.
 
+### 4.7 Keycloak 26.7.3 bundles two vulnerable dependencies (discovered post-merge attempt)
+Once `baobab-iam`'s CI could finally build a real image (after the `4.1`–`4.6` fixes above
+plus a builder-stage non-root-`USER` fix found while watching PR #2's checks), the
+`foundation / vulnerability-scan` job's Trivy scan surfaced real findings for the first
+time — this job could never previously complete a scan because the image never built.
+`netty-handler-4.1.136.Final.jar` (CVE-2026-75595, **CRITICAL**, fixed in `4.2.17.Final`/
+`4.1.137.Final`) and `mssql-jdbc-13.2.1.jre11.jar` (CVE-2025-59250, **HIGH**) are bundled by
+upstream Keycloak 26.7.3 itself — not something a `baobab-iam` config change can patch
+without a Keycloak point-release bump, which ADR-0002 §39 requires going through a
+deliberate upgrade process (release-notes review, candidate image, contract/OIDC tests,
+staging rollout) that this session cannot safely execute without registry access. See R-8.
+
+(A third, related finding — 3 HIGH CVEs in the `curl`/`libcurl` package this session's own
+Dockerfile fix had added to satisfy `bootstrap.sh`'s health-check wait loop — was self-
+inflicted by that fix and has been corrected by removing the curl dependency entirely
+in favor of retrying `kcadm.sh`'s own login instead of curl-polling a health endpoint;
+it does not appear in the risk register because it was fully resolved within this PR.)
+
 ---
 
 ## 5. Risk Register
@@ -141,6 +159,7 @@ failure on the second pass would be silently masked.
 | R-5 | No reason-code registry, `AuthenticationAssurance`, or `Delegation` contract exists in `shared` | Medium — blocks step-up auth (ADR-0015) and confused-deputy defenses (§69 of programme spec) | Tracked for next IAM-1 session |
 | R-6 | `infrastructure` repo provisions no Keycloak service at all | Medium — no path to a real deployed environment yet | Tracked for a future IAM-2/IAM-14 session |
 | R-7 | Zero automated tests exist against a live Keycloak instance in `baobab-iam` (ADR-0002 §48 "Required Verification" is entirely unmet) | High — "Gate IAM-2 complete" cannot be substantiated | Partially addressed in this session's IAM-2 hardening PR (OIDC discovery/JWKS/client-credentials/actor_type assertions); full PKCE browser-flow and DR-restore tests remain out of scope |
+| R-8 | Keycloak 26.7.3 bundles `netty-handler` 4.1.136.Final (CVE-2026-75595, **CRITICAL**) and `mssql-jdbc` 13.2.1 (CVE-2025-59250, **HIGH**) (§4.7) | Critical — blocks `foundation / vulnerability-scan` from ever going green on the pinned version | **Needs human/CI action**: a deliberate Keycloak point-release upgrade per ADR-0002 §39 (this session cannot verify a fixed release exists or pull a candidate image — quay.io is network-blocked, same constraint as R-1) |
 
 ---
 

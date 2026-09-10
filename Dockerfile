@@ -2,13 +2,21 @@
 #
 # The upstream quay.io/keycloak/keycloak final-stage image is built on
 # ubi9-micro, which intentionally has no package manager (no dnf/microdnf).
-# bootstrap.sh (executed inside the running container) needs curl (to poll
-# the health endpoint) and jq (to read clientId / merge a dev-only secret
-# from the client JSON files). Per Red Hat's documented pattern for adding
-# packages to a micro image, they are resolved in a throwaway ubi9 stage
-# and their installed files copied into the final image — this avoids
+# bootstrap.sh (executed inside the running container) needs jq (to read
+# clientId / merge a dev-only secret from the client JSON files) — it does
+# NOT need curl; the readiness wait loop uses kcadm.sh's own bundled Java
+# HTTP client instead (see bootstrap.sh). Per Red Hat's documented pattern
+# for adding packages to a micro image, jq is resolved in a throwaway ubi9
+# stage and its installed files copied into the final image — this avoids
 # pulling a package manager, or its transitive attack surface, into the
 # shipped image itself.
+#
+# curl was deliberately NOT added here: an earlier version of this
+# Dockerfile installed it alongside jq, and Trivy flagged the ubi9-provided
+# curl/libcurl package for 3 HIGH-severity CVEs with no fixed version yet
+# available upstream (CVE-2026-11352, CVE-2026-11586, CVE-2026-8925).
+# Nothing in this image actually needs curl, so the fix was to drop it
+# rather than accept the exposure.
 FROM registry.access.redhat.com/ubi9:9.4 AS tools-build
 RUN mkdir -p /mnt/rootfs && \
     dnf install \
@@ -17,7 +25,7 @@ RUN mkdir -p /mnt/rootfs && \
       --setopt install_weak_deps=false \
       --nodocs \
       -y \
-      curl jq \
+      jq \
     && dnf clean all --installroot /mnt/rootfs
 
 FROM quay.io/keycloak/keycloak:26.7.3 AS builder
@@ -46,7 +54,7 @@ RUN /opt/keycloak/bin/kc.sh build
 # Final stage – minimal distroless image
 FROM quay.io/keycloak/keycloak:26.7.3
 
-# curl + jq for bootstrap.sh (see tools-build stage above)
+# jq for bootstrap.sh (see tools-build stage above)
 COPY --from=tools-build /mnt/rootfs /
 
 # Copy the built distribution from builder

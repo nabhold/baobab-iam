@@ -6,14 +6,21 @@ KC_ADMIN=${KEYCLOAK_ADMIN:-admin}
 KC_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin123}
 KC_URL=${KC_URL:-http://localhost:8080}
 
-# Wait for Keycloak to be ready
+# Wait for Keycloak to be ready, then log in as admin.
+#
+# This retries kcadm's own login rather than curl-polling a health
+# endpoint: kcadm.sh is a bundled Java CLI with its own HTTP client, so it
+# needs no extra runtime dependency, and a successful login both confirms
+# readiness and completes the login step in one loop. (An earlier version
+# of this script used curl for the wait loop, which required installing
+# curl into the image — removed after a vulnerability scan flagged
+# multiple HIGH-severity CVEs in the ubi9-provided curl/libcurl package
+# with no fixed version yet available upstream; kcadm.sh has no such
+# exposure since it ships with Keycloak itself.)
 echo "Waiting for Keycloak at $KC_URL ..."
-until curl -s -o /dev/null -w "%{http_code}" "$KC_URL/health/ready" | grep -q "200"; do
+until /opt/keycloak/bin/kcadm.sh config credentials --server "$KC_URL" --realm master --user "$KC_ADMIN" --password "$KC_ADMIN_PASSWORD" 2>/dev/null; do
   sleep 2
 done
-
-# Login as admin
-/opt/keycloak/bin/kcadm.sh config credentials --server "$KC_URL" --realm master --user "$KC_ADMIN" --password "$KC_ADMIN_PASSWORD"
 
 # Import realm if not exists
 REALM_EXISTS=$(/opt/keycloak/bin/kcadm.sh get realms/baobab > /dev/null 2>&1 && echo "yes" || echo "no")
