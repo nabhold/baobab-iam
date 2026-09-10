@@ -22,6 +22,15 @@ RUN mkdir -p /mnt/rootfs && \
 
 FROM quay.io/keycloak/keycloak:26.7.3 AS builder
 
+# The upstream image already switches to its non-root runtime user (see
+# the final stage's own USER 1000 below), which this build stage inherits.
+# COPY always creates root-owned files regardless of the current USER, so
+# the chmod below would fail as a non-root, non-owning user ("Operation
+# not permitted"). This stage is discarded after the build (multi-stage),
+# so building it as root has no effect on the shipped runtime image, which
+# still ends with USER 1000.
+USER root
+
 # Copy custom theme and providers (if any)
 COPY themes/ /opt/keycloak/themes/
 COPY providers/ /opt/keycloak/providers/
