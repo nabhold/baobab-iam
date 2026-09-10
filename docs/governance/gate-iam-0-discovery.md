@@ -226,7 +226,7 @@ available release and re-pinning to itself would be a no-op.
 |---|---|---|---|
 | R-1 | `upstream.lock.yaml` Keycloak image digest cannot be verified from this session (quay.io network-blocked by policy) | High — production image pin is currently fabricated | **Needs human/CI action**: run `docker buildx imagetools inspect quay.io/keycloak/keycloak:26.7.3` from an environment with registry egress and commit the real digest |
 | R-2 | No `actor_type` claim wiring anywhere in `baobab-iam` config (§4.5) | High — blocks all workload authentication end-to-end | Addressed in this session's IAM-2 hardening PR |
-| R-3 | `baobab-cp` conflates `TenantID` with `CanonicalEntityID` in the resolver pipeline (violates ADR-0005 §2) | High — a core platform invariant is currently false in running code | Out of this session's bounded scope; tracked for next IAM-3 session |
+| R-3 | `baobab-cp` conflates `TenantID` with `CanonicalEntityID` in the resolver pipeline (violates ADR-0005 §2) | High — a core platform invariant is currently false in running code | **Fixed** in `nabhold/baobab-cp#63`, then the full Gate IAM-3 `CanonicalIdentity`/`ExternalIdentity` layer this conflation blocked was completed in `nabhold/baobab-cp#64`-`#71` — see [`gate-iam-3-canonical-identity-scope.md`](./gate-iam-3-canonical-identity-scope.md) |
 | R-4 | `shared`'s identity-event schemas are unresolvable (§4.3); only 3 of 12 required lifecycle events exist | High — blocks Gate IAM-12 (lifecycle/deprovisioning) entirely until fixed | Out of this session's bounded scope; tracked for next IAM-1 session |
 | R-5 | No reason-code registry, `AuthenticationAssurance`, or `Delegation` contract exists in `shared` | Medium — blocks step-up auth (ADR-0015) and confused-deputy defenses (§69 of programme spec) | Tracked for next IAM-1 session |
 | R-6 | `infrastructure` repo provisions no Keycloak service at all | Medium — no path to a real deployed environment yet | Tracked for a future IAM-2/IAM-14 session |
@@ -243,10 +243,13 @@ available release and re-pinning to itself would be a no-op.
    digest.
 2. **Next:** Gate IAM-1 hardening in `shared` — fix the broken `$ref`s (§4.3), add the
    missing lifecycle events, add a reason-code registry, add real schema-validation tests.
-3. **Next:** Gate IAM-3 hardening in `baobab-cp` — introduce a real `CanonicalIdentity`/
-   `ExternalIdentity(issuer, subject)` layer, fix the Tenant/CanonicalEntity conflation
-   (R-3), and switch `/v1/resolve` to opaque denial reasons.
-4. **Then:** Gates IAM-4 through IAM-16 as originally sequenced, now that the identity spine
+3. **Done:** Gate IAM-3 hardening in `baobab-cp` — a real `CanonicalIdentity`/
+   `ExternalIdentity(issuer, subject)` layer is implemented (`nabhold/baobab-cp#64`-`#71`,
+   see [`gate-iam-3-canonical-identity-scope.md`](./gate-iam-3-canonical-identity-scope.md)),
+   and the Tenant/CanonicalEntity conflation (R-3) is fixed. `/v1/resolve`'s opaque-denial
+   -reasons switch was not part of this pass — it remains a separate, unrelated gap (see
+   `nabhold/baobab-cp#63`'s "Not in scope" note).
+4. **Next:** Gates IAM-4 through IAM-16 as originally sequenced, now that the identity spine
    underneath them is actually sound.
 
 This sequencing deliberately does not jump ahead to Gates IAM-6/7/9/10 (Zuribeans, Thamani,

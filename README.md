@@ -10,9 +10,11 @@
 - **Implementation:** Gate IAM-2 (Keycloak foundation) hardening in progress — see
   [Gate IAM-0 discovery](./docs/governance/gate-iam-0-discovery.md) for the verified
   implementation state and open risks (notably R-1: the pinned Keycloak image digest in
-  `upstream.lock.yaml` is still a placeholder pending registry access).
+  `upstream.lock.yaml` is still a placeholder pending registry access). Gate IAM-3's
+  Control Plane identity spine (`CanonicalIdentity`/`ExternalIdentity`, in `baobab-cp`) is
+  **complete** — see [Gate IAM-3 scope](./docs/governance/gate-iam-3-canonical-identity-scope.md).
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), then
-  Gate IAM-3 (Control Plane identity spine).
+  Gates IAM-4 through IAM-16 now that the identity spine underneath them is sound.
 
 ---
 
