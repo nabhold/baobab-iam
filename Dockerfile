@@ -60,6 +60,14 @@ RUN chmod +x /opt/keycloak/bootstrap.sh
 # password) remain correctly runtime-only, set in docker-compose.yml.
 ENV KC_DB=postgres
 
+# `health-enabled` is ALSO a build-time option, and defaults to disabled —
+# with it unset, no health endpoint answers on any port, build-time or
+# runtime, which is why moving the wait loop to the management port
+# (port 9000) alone did not fix readiness. Both this and KC_DB above must
+# be set before `kc.sh build`, not just at runtime, because of --optimized
+# (see the KC_DB comment above for why).
+ENV KC_HEALTH_ENABLED=true
+
 # Build the Keycloak distribution (optimized)
 RUN /opt/keycloak/bin/kc.sh build
 
