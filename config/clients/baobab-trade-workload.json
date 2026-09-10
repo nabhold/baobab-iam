@@ -1,5 +1,5 @@
 {
-  "clientId": "baobab-trade",
+  "clientId": "baobab-trade-workload",
   "name": "Baobab Trade Workload",
   "description": "Workload identity for the Trade engine",
   "enabled": true,
@@ -16,7 +16,20 @@
     "backchannel.logout.revoke.offline.tokens": "false"
   },
   "authenticationFlowBindingOverrides": {},
-  "defaultClientScopes": ["web-origins", "acr", "profile", "email", "roles", "openid"],
-  "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"],
-  "serviceAccountsClientId": "baobab-trade"
+  "defaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "email",
+    "roles",
+    "openid",
+    "actor-type-workload",
+    "context:resolve"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ]
 }

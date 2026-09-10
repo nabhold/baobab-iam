@@ -39,6 +39,10 @@ services:
       KC_LOG_LEVEL: ${KC_LOG_LEVEL:-INFO}
     ports:
       - "8080:8080"
+      # Keycloak 26 serves health/metrics on a separate management
+      # interface, port 9000 by default — NOT on the main HTTP port. See
+      # https://www.keycloak.org/server/management-interface.
+      - "9000:9000"
     depends_on:
       postgres:
         condition: service_healthy

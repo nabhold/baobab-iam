@@ -1,5 +1,5 @@
 {
-  "clientId": "baobab-cms",
+  "clientId": "baobab-cms-workload",
   "name": "Baobab CMS Workload",
   "description": "Workload identity for the CMS engine",
   "enabled": true,
@@ -16,7 +16,20 @@
     "backchannel.logout.revoke.offline.tokens": "false"
   },
   "authenticationFlowBindingOverrides": {},
-  "defaultClientScopes": ["web-origins", "acr", "profile", "email", "roles", "openid"],
-  "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"],
-  "serviceAccountsClientId": "baobab-cms"
+  "defaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "email",
+    "roles",
+    "openid",
+    "actor-type-workload",
+    "context:resolve"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ]
 }

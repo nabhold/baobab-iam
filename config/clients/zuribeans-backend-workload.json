@@ -16,7 +16,20 @@
     "backchannel.logout.revoke.offline.tokens": "false"
   },
   "authenticationFlowBindingOverrides": {},
-  "defaultClientScopes": ["web-origins", "acr", "profile", "email", "roles", "openid"],
-  "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"],
-  "serviceAccountsClientId": "zuribeans-backend"
+  "defaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "email",
+    "roles",
+    "openid",
+    "actor-type-workload",
+    "context:resolve"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ]
 }

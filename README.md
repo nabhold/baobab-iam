@@ -6,9 +6,13 @@
 
 ## Status
 
-- **Architecture:** [ADR-0001](./docs/adr/0001-baobab-iam-platform.md) through [ADR-0018](./docs/adr/0018-iam-availability-backup-recovery-disaster-resilience.md)
-- **Implementation:** Gate IAM-2 (scaffold) complete.
-- **Next:** Gate IAM-3 (Control Plane integration).
+- **Architecture:** [ADR-0001 through ADR-0018](./docs/adr/README.md)
+- **Implementation:** Gate IAM-2 (Keycloak foundation) hardening in progress — see
+  [Gate IAM-0 discovery](./docs/governance/gate-iam-0-discovery.md) for the verified
+  implementation state and open risks (notably R-1: the pinned Keycloak image digest in
+  `upstream.lock.yaml` is still a placeholder pending registry access).
+- **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), then
+  Gate IAM-3 (Control Plane identity spine).
 
 ---
 
@@ -49,7 +53,7 @@ It does **not** own:
 |---------|--------|
 | Identity provider | Keycloak 26.7.3 |
 | Database | PostgreSQL 17 |
-| Container | Distroless image, pinned digest |
+| Container | Distroless image, version-pinned (digest pin pending registry access — see R-1) |
 | Configuration | JSON realm exports + idempotent bootstrap |
 | CI/CD | Reusable workflows from `nabhold/shared` |
 
@@ -66,3 +70,11 @@ cp .env.example .env
 make dev-up
 make bootstrap
 make test
+```
+
+Run the ADR-0002 Section 48 verification suite against a running, bootstrapped stack:
+
+```bash
+BOOTSTRAP_WORKLOAD_CLIENT_SECRET=dev-secret make bootstrap
+BOOTSTRAP_WORKLOAD_CLIENT_SECRET=dev-secret ./tests/integration/run.sh
+```

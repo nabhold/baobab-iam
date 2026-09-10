@@ -1,0 +1,25 @@
+{
+  "name": "actor-type-human",
+  "description": "Injects the actor_type=human claim required by ADR-0006's token profile for every token issued to an end-user-facing client. Resource servers (baobab-cp and every engine) reject tokens that lack this claim.",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "false",
+    "display.on.consent.screen": "false"
+  },
+  "protocolMappers": [
+    {
+      "name": "actor-type-human",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-hardcoded-claim-mapper",
+      "consentRequired": false,
+      "config": {
+        "claim.name": "actor_type",
+        "claim.value": "human",
+        "jsonType.label": "String",
+        "access.token.claim": "true",
+        "id.token.claim": "true",
+        "userinfo.token.claim": "false"
+      }
+    }
+  ]
+}

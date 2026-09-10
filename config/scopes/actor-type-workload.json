@@ -1,0 +1,25 @@
+{
+  "name": "actor-type-workload",
+  "description": "Injects the actor_type=workload claim required by ADR-0006's token profile and enforced server-side by baobab-cp (internal/auth/oidc.go) for every client-credentials token issued to a workload/service-account client.",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "false",
+    "display.on.consent.screen": "false"
+  },
+  "protocolMappers": [
+    {
+      "name": "actor-type-workload",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-hardcoded-claim-mapper",
+      "consentRequired": false,
+      "config": {
+        "claim.name": "actor_type",
+        "claim.value": "workload",
+        "jsonType.label": "String",
+        "access.token.claim": "true",
+        "id.token.claim": "false",
+        "userinfo.token.claim": "false"
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# gitleaks false-positive allowlist.
+#
+# Each entry is a documented, verified false positive — not a real secret.
+# Never add an entry here without first confirming the flagged content is
+# not credential material.
+
+# docs/adr/Consolidated-Technical-Specification.md:4488 — an example
+# Idempotency-Key HTTP header value (a ULID, "01JZ6BXAMK7BNF37A7K14T1XFR")
+# used to illustrate idempotent provisioning API design in ADR-0001's
+# consolidated spec (Section 196). Not a credential of any kind; gitleaks'
+# generic-api-key heuristic matched on the high-entropy-looking ULID after
+# a colon-delimited header name.
+683c4e467606bbac9572c5522187349eb0351ba7:docs/adr/Consolidated-Technical-Specification.md:generic-api-key:4488

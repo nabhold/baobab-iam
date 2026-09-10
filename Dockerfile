@@ -1,5 +1,43 @@
 # Dockerfile – multi‑stage build for Keycloak with Baobab configuration
+#
+# The upstream quay.io/keycloak/keycloak final-stage image is built on
+# ubi9-micro, which intentionally has no package manager (no dnf/microdnf).
+# bootstrap.sh (executed inside the running container) needs jq (to read
+# clientId / merge a dev-only secret from the client JSON files) — it does
+# NOT need curl; the readiness wait loop uses kcadm.sh's own bundled Java
+# HTTP client instead (see bootstrap.sh). Per Red Hat's documented pattern
+# for adding packages to a micro image, jq is resolved in a throwaway ubi9
+# stage and its installed files copied into the final image — this avoids
+# pulling a package manager, or its transitive attack surface, into the
+# shipped image itself.
+#
+# curl was deliberately NOT added here: an earlier version of this
+# Dockerfile installed it alongside jq, and Trivy flagged the ubi9-provided
+# curl/libcurl package for 3 HIGH-severity CVEs with no fixed version yet
+# available upstream (CVE-2026-11352, CVE-2026-11586, CVE-2026-8925).
+# Nothing in this image actually needs curl, so the fix was to drop it
+# rather than accept the exposure.
+FROM registry.access.redhat.com/ubi9:9.4 AS tools-build
+RUN mkdir -p /mnt/rootfs && \
+    dnf install \
+      --installroot /mnt/rootfs \
+      --releasever 9 \
+      --setopt install_weak_deps=false \
+      --nodocs \
+      -y \
+      jq \
+    && dnf clean all --installroot /mnt/rootfs
+
 FROM quay.io/keycloak/keycloak:26.7.3 AS builder
+
+# The upstream image already switches to its non-root runtime user (see
+# the final stage's own USER 1000 below), which this build stage inherits.
+# COPY always creates root-owned files regardless of the current USER, so
+# the chmod below would fail as a non-root, non-owning user ("Operation
+# not permitted"). This stage is discarded after the build (multi-stage),
+# so building it as root has no effect on the shipped runtime image, which
+# still ends with USER 1000.
+USER root
 
 # Copy custom theme and providers (if any)
 COPY themes/ /opt/keycloak/themes/
@@ -10,11 +48,34 @@ COPY config/ /opt/keycloak/config/
 COPY scripts/bootstrap.sh /opt/keycloak/bootstrap.sh
 RUN chmod +x /opt/keycloak/bootstrap.sh
 
+# `db` is a build-time option in Keycloak: an `--optimized` runtime start
+# (see the final stage's CMD) skips re-augmentation and so ignores any
+# `KC_DB` set only at runtime (docker-compose.yml's own `KC_DB: postgres`
+# is therefore not enough by itself) — it must already be baked into this
+# build. Without this, the container never reaches a running state: it
+# silently keeps whatever `db` this build step defaulted to and never
+# becomes healthy, which is what happened before this was added (the
+# integration-test job's Keycloak container ran for 5 minutes without
+# ever reaching /health/ready). Connection details (db-url/username/
+# password) remain correctly runtime-only, set in docker-compose.yml.
+ENV KC_DB=postgres
+
+# `health-enabled` is ALSO a build-time option, and defaults to disabled —
+# with it unset, no health endpoint answers on any port, build-time or
+# runtime, which is why moving the wait loop to the management port
+# (port 9000) alone did not fix readiness. Both this and KC_DB above must
+# be set before `kc.sh build`, not just at runtime, because of --optimized
+# (see the KC_DB comment above for why).
+ENV KC_HEALTH_ENABLED=true
+
 # Build the Keycloak distribution (optimized)
 RUN /opt/keycloak/bin/kc.sh build
 
 # Final stage – minimal distroless image
 FROM quay.io/keycloak/keycloak:26.7.3
+
+# jq for bootstrap.sh (see tools-build stage above)
+COPY --from=tools-build /mnt/rootfs /
 
 # Copy the built distribution from builder
 COPY --from=builder /opt/keycloak/ /opt/keycloak/

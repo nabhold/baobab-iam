@@ -2,21 +2,26 @@
 
 This directory contains the ADRs for Baobab IAM.
 
-- [ADR-0001: Baobab Identity and Access Management Architecture](./0001-baobab-iam-platform.md)
-- [ADR-0002: Keycloak as the Baobab Identity Provider](./0002-keycloak-as-idp.md)
-- [ADR-0003: Identity Authority and Trust Boundaries](./0003-identity-authority-trust-boundaries.md)
-- [ADR-0004: Canonical Identity and External Identity Mapping](./0004-canonical-identity-external-mapping.md)
-- [ADR-0005: Realm, Organization, Tenant and Legal-Entity Model](./0005-realm-org-tenant-legalentity-model.md)
-- [ADR-0006: OIDC, OAuth and Token Profile](./0006-oidc-oauth-token-profile.md)
-- [ADR-0007: Workload Identity and Service-to-Service Authentication](./0007-workload-identity.md)
-- [ADR-0008: Platform Authorization Architecture](./0008-platform-authorization.md)
-- [ADR-0009: Workforce SSO and Privileged Access](./0009-workforce-sso-privileged-access.md)
-- [ADR-0010: Zuribeans B2B Identity and Organization Access](./0010-zuribeans-b2b.md)
-- [ADR-0011: Thamani B2C Customer Identity](./0011-thamani-b2c.md)
-- [ADR-0012: Supplier Identity and Representative Access](./0012-supplier-identity.md)
-- [ADR-0013: MedusaJS Authentication Integration](./0013-medusa-auth.md)
-- [ADR-0014: iDempiere SSO and ERP Identity Mapping](./0014-idempiere-sso.md)
-- [ADR-0015: Credential Security, MFA, Passkeys and Account Recovery](./0015-credential-security-mfa-passkeys.md)
-- [ADR-0016: Identity Lifecycle, Revocation and Deprovisioning](./0016-identity-lifecycle.md)
-- [ADR-0017: IAM Audit, Security Events and Observability](./0017-iam-audit-observability.md)
-- [ADR-0018: IAM Availability, Backup, Recovery and Disaster Resilience](./0018-iam-availability-backup-recovery.md)
+- [ADR-0001: Baobab Identity and Access Management Architecture](./ADR-0001%20—%20Baobab%20Identity%20and%20Access%20Management%20Architecture.md)
+- [ADR-0002: Keycloak as the Baobab Identity Provider](./ADR-0002%20—%20Keycloak%20as%20the%20Baobab%20Identity%20Provider.md)
+- [ADR-0003: Identity Authority and Trust Boundaries](./ADR-0003%20—%20Identity%20Authority%20and%20Trust%20Boundaries.md)
+- [ADR-0004: Canonical Identity and External Identity Mapping](./ADR-0004%20—%20Canonical%20Identity%20and%20External%20Identity%20Mapping.md)
+- [ADR-0005: Realm, Organization, Tenant and Legal-Entity Model](./ADR-0005%20—%20Realm,%20Organization,%20Tenant%20and%20Legal-Entity%20Model.md)
+- [ADR-0006: OIDC, OAuth and Token Profile](./ADR-0006%20—%20OIDC,%20OAuth%20and%20Token%20Profile.md)
+- [ADR-0007: Workload Identity and Service-to-Service Authentication](./ADR-0007%20—%20Workload%20Identity%20and%20Service-to-Service%20Authentication.md)
+- [ADR-0008: Platform Authorization Architecture](./ADR-0008%20—%20Platform%20Authorization%20Architecture.md)
+- [ADR-0009: Workforce SSO and Privileged Access](./ADR-0009%20—%20Workforce%20SSO%20and%20Privileged%20Access.md)
+- [ADR-0010: Zuribeans B2B Identity and Organization Access](./ADR-0010%20—%20Zuribeans%20B2B%20Identity%20and%20Organization%20Access.md)
+- [ADR-0011: Thamani B2C Customer Identity](./ADR-0011%20—%20Thamani%20B2C%20Customer%20Identity.md)
+- [ADR-0012: Supplier Identity and Representative Access](./ADR-0012%20—%20Supplier%20Identity%20and%20Representative%20Access.md)
+- [ADR-0013: MedusaJS Authentication Integration](./ADR-0013%20—%20MedusaJS%20Authentication%20Integration.md)
+- [ADR-0014: iDempiere SSO and ERP Identity Mapping](./ADR-0014%20—%20iDempiere%20SSO%20and%20ERP%20Identity%20Mapping.md)
+- [ADR-0015: Credential Security, MFA, Passkeys and Account Recovery](./ADR-0015%20—%20Credential%20Security,%20MFA,%20Passkeys%20and%20Account%20Recovery.md)
+- [ADR-0016: Identity Lifecycle, Revocation and Deprovisioning](./ADR-0016%20—%20Identity%20Lifecycle,%20Revocation%20and%20Deprovisioning.md)
+- [ADR-0017: IAM Audit, Security Events and Observability](./ADR-0017%20—%20IAM%20Audit,%20Security%20Events%20and%20Observability.md)
+- [ADR-0018: IAM Availability, Backup, Recovery and Disaster Resilience](./ADR-0018%20—%20IAM%20Availability,%20Backup,%20Recovery%20and%20Disaster%20Resilience.md)
+
+See also the [Consolidated Technical Specification](./Consolidated-Technical-Specification.md),
+which merges ADR-0001 through ADR-0018 into a single implementable design, and
+[Gate IAM-0 discovery](../governance/gate-iam-0-discovery.md) for the current
+verified implementation state against these ADRs.

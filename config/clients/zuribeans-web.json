@@ -17,8 +17,25 @@
     "backchannel.logout.revoke.offline.tokens": "false"
   },
   "authenticationFlowBindingOverrides": {},
-  "defaultClientScopes": ["web-origins", "acr", "profile", "email", "roles", "openid"],
-  "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"],
-  "redirectUris": ["http://localhost:3000/*"],
-  "webOrigins": ["http://localhost:3000"]
+  "defaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "email",
+    "roles",
+    "openid",
+    "actor-type-human"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ],
+  "redirectUris": [
+    "http://localhost:3000/*"
+  ],
+  "webOrigins": [
+    "http://localhost:3000"
+  ]
 }
