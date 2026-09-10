@@ -94,6 +94,7 @@ if [ -n "$ACCESS_TOKEN" ]; then
   ACTOR_TYPE=$(echo "$PAYLOAD" | jq -r '.actor_type // empty')
   SCOPE=$(echo "$PAYLOAD" | jq -r '.scope // empty')
   TOKEN_ISS=$(echo "$PAYLOAD" | jq -r '.iss // empty')
+  AUDIENCE=$(echo "$PAYLOAD" | jq -r 'if (.aud | type) == "array" then .aud | join(",") else (.aud // empty) end')
   if [ "$ACTOR_TYPE" = "workload" ]; then
     pass "token carries actor_type=workload (ADR-0006 token profile)"
   else
@@ -108,6 +109,11 @@ if [ -n "$ACCESS_TOKEN" ]; then
     pass "token issuer matches realm issuer"
   else
     fail "token issuer '$TOKEN_ISS' != expected '$EXPECTED_ISSUER'"
+  fi
+  if [[ ",$AUDIENCE," == *",baobab-control-plane,"* ]]; then
+    pass "token carries aud=baobab-control-plane (ADR-0007 §§24-25, required by baobab-cp's go-oidc audience check)"
+  else
+    fail "token aud claim is '$AUDIENCE', expected to include 'baobab-control-plane'"
   fi
 else
   fail "workload client 'baobab-trade-workload' did not receive an access token: $TOKEN_RESPONSE"

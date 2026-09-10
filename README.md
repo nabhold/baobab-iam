@@ -13,8 +13,10 @@
   `upstream.lock.yaml` is still a placeholder pending registry access). Gate IAM-3's
   Control Plane identity spine (`CanonicalIdentity`/`ExternalIdentity`, in `baobab-cp`) is
   **complete** — see [Gate IAM-3 scope](./docs/governance/gate-iam-3-canonical-identity-scope.md).
-- **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), then
-  Gates IAM-4 through IAM-16 now that the identity spine underneath them is sound.
+- **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline). Gate IAM-4
+  (workload identity, ADR-0007) is scoped and underway — see
+  [Gate IAM-4 scope](./docs/governance/gate-iam-4-workload-identity-scope.md) — then Gates IAM-5
+  through IAM-16 now that the identity spine underneath them is sound.
 
 ---
 

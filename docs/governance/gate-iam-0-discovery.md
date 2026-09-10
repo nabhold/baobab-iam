@@ -249,7 +249,9 @@ available release and re-pinning to itself would be a no-op.
    and the Tenant/CanonicalEntity conflation (R-3) is fixed. `/v1/resolve`'s opaque-denial
    -reasons switch was not part of this pass — it remains a separate, unrelated gap (see
    `nabhold/baobab-cp#63`'s "Not in scope" note).
-4. **Next:** Gates IAM-4 through IAM-16 as originally sequenced, now that the identity spine
+4. **In progress:** Gate IAM-4 (workload identity, ADR-0007) — scoped and phase 1 underway, see
+   [`gate-iam-4-workload-identity-scope.md`](./gate-iam-4-workload-identity-scope.md). Gates
+   IAM-5 through IAM-16 remain next, as originally sequenced, now that the identity spine
    underneath them is actually sound.
 
 This sequencing deliberately does not jump ahead to Gates IAM-6/7/9/10 (Zuribeans, Thamani,
