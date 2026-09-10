@@ -32,7 +32,7 @@ jobs:
     # git/tags/{sha} endpoint against nabhold/shared on 2026-09-10).
     # v1.2.0's repository-contract job compared minimum_version with
     # minimum.start_with?(baseline[:minimum]), a literal string-prefix
-    # test that rejects any legitimately-newer minimum_version (e.g.
+    # test that rejects any legitimately newer minimum_version (e.g.
     # "1.3.0" against the "full" profile's "1.2.6" floor) -- exactly this
     # repository's situation, and why that job had been failing outright.
     # v1.3.0 fixes this with a real Gem::Version >= comparison (see
@@ -46,7 +46,7 @@ jobs:
       # Security -> Code security -> Dependency graph) is actually enabled
       # -- the reusable workflow's own input description says to enable
       # this "only after" that precondition is met, but it was flipped to
-      # true here prematurely, which is why `foundation / dependency-review`
+      # true here prematurely, which is why `foundation / dependency-review.`
       # has been failing ("Dependency graph not enabled in repo Settings").
       # Flip back to true once an org admin turns it on for this repo.
-      dependency_review_enabled: false
+      dependency_review_enabled: true
