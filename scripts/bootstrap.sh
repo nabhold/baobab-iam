@@ -18,9 +18,18 @@ KC_URL=${KC_URL:-http://localhost:8080}
 # with no fixed version yet available upstream; kcadm.sh has no such
 # exposure since it ships with Keycloak itself.)
 echo "Waiting for Keycloak at $KC_URL ..."
-until /opt/keycloak/bin/kcadm.sh config credentials --server "$KC_URL" --realm master --user "$KC_ADMIN" --password "$KC_ADMIN_PASSWORD" 2>/dev/null; do
-  sleep 2
+READY=0
+for _ in $(seq 1 60); do
+  if /opt/keycloak/bin/kcadm.sh config credentials --server "$KC_URL" --realm master --user "$KC_ADMIN" --password "$KC_ADMIN_PASSWORD"; then
+    READY=1
+    break
+  fi
+  sleep 5
 done
+if [ "$READY" -ne 1 ]; then
+  echo "Keycloak admin login did not succeed within 5 minutes; giving up." >&2
+  exit 1
+fi
 
 # Import realm if not exists
 REALM_EXISTS=$(/opt/keycloak/bin/kcadm.sh get realms/baobab > /dev/null 2>&1 && echo "yes" || echo "no")

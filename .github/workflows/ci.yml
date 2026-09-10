@@ -17,6 +17,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Set up Docker Buildx
@@ -44,6 +45,7 @@ jobs:
 
   integration-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       BOOTSTRAP_WORKLOAD_CLIENT_SECRET: ci-test-only-secret-do-not-use-in-prod
       KC_URL: http://localhost:8080

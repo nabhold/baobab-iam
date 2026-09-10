@@ -36,7 +36,7 @@ jwt_payload() {
 }
 
 get_admin_token() {
-  curl -sf -X POST "$KC_URL/realms/master/protocol/openid-connect/token" \
+  curl -sf --max-time 30 -X POST "$KC_URL/realms/master/protocol/openid-connect/token" \
     -d "client_id=admin-cli" \
     -d "username=$KC_ADMIN" \
     -d "password=$KC_ADMIN_PASSWORD" \
@@ -44,7 +44,7 @@ get_admin_token() {
 }
 
 echo "== 1. Deterministic realm bootstrap =="
-REALM_INFO=$(curl -sf "$KC_URL/realms/$REALM" || echo "")
+REALM_INFO=$(curl -sf --max-time 30 "$KC_URL/realms/$REALM" || echo "")
 if [ -n "$REALM_INFO" ] && [ "$(echo "$REALM_INFO" | jq -r '.realm')" = "$REALM" ]; then
   pass "realm '$REALM' is provisioned and reachable"
 else
@@ -52,7 +52,7 @@ else
 fi
 
 echo "== 2. OIDC discovery =="
-DISCOVERY=$(curl -sf "$KC_URL/realms/$REALM/.well-known/openid-configuration")
+DISCOVERY=$(curl -sf --max-time 30 "$KC_URL/realms/$REALM/.well-known/openid-configuration")
 ISSUER=$(echo "$DISCOVERY" | jq -r '.issuer')
 JWKS_URI=$(echo "$DISCOVERY" | jq -r '.jwks_uri')
 TOKEN_ENDPOINT=$(echo "$DISCOVERY" | jq -r '.token_endpoint')
@@ -68,7 +68,7 @@ else
 fi
 
 echo "== 3. JWKS retrieval =="
-JWKS=$(curl -sf "$JWKS_URI")
+JWKS=$(curl -sf --max-time 30 "$JWKS_URI")
 KEY_COUNT=$(echo "$JWKS" | jq '.keys | length')
 if [ "$KEY_COUNT" -gt 0 ]; then
   pass "JWKS endpoint returned $KEY_COUNT signing key(s)"
@@ -77,7 +77,7 @@ else
 fi
 
 echo "== 4. Workload client-credentials grant + actor_type/scope claims =="
-TOKEN_RESPONSE=$(curl -s -X POST "$TOKEN_ENDPOINT" \
+TOKEN_RESPONSE=$(curl -s --max-time 30 -X POST "$TOKEN_ENDPOINT" \
   -d "client_id=baobab-trade" \
   -d "client_secret=$WORKLOAD_SECRET" \
   -d "grant_type=client_credentials")
@@ -108,7 +108,7 @@ else
 fi
 
 echo "== 5. Wrong-client-secret rejection =="
-BAD_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
+BAD_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
   -d "client_id=baobab-trade" \
   -d "client_secret=definitely-not-the-secret" \
   -d "grant_type=client_credentials")
@@ -119,7 +119,7 @@ else
 fi
 
 echo "== 6. Unknown-client rejection =="
-UNKNOWN_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
+UNKNOWN_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
   -d "client_id=does-not-exist" \
   -d "client_secret=irrelevant" \
   -d "grant_type=client_credentials")
@@ -132,7 +132,7 @@ fi
 echo "== 7. PKCE S256 configured on public browser clients =="
 ADMIN_TOKEN=$(get_admin_token)
 for CLIENT_ID in zuribeans-web thamani-web; do
-  CLIENT_JSON=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" \
+  CLIENT_JSON=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
     "$KC_URL/admin/realms/$REALM/clients?clientId=$CLIENT_ID" | jq '.[0]')
   PKCE_METHOD=$(echo "$CLIENT_JSON" | jq -r '.attributes["pkce.code.challenge.method"] // empty')
   PUBLIC=$(echo "$CLIENT_JSON" | jq -r '.publicClient')
@@ -151,12 +151,12 @@ for CLIENT_ID in zuribeans-web thamani-web; do
 done
 
 echo "== 8. Independent workload client revocation =="
-ERP_CLIENT_UUID=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" \
+ERP_CLIENT_UUID=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
   "$KC_URL/admin/realms/$REALM/clients?clientId=baobab-erp" | jq -r '.[0].id')
-curl -sf -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+curl -sf --max-time 30 -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
   "$KC_URL/admin/realms/$REALM/clients/$ERP_CLIENT_UUID" \
   -d '{"enabled": false}' > /dev/null
-ERP_TOKEN_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
+ERP_TOKEN_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
   -d "client_id=baobab-erp" \
   -d "client_secret=$WORKLOAD_SECRET" \
   -d "grant_type=client_credentials")
@@ -165,7 +165,7 @@ if [ "$ERP_TOKEN_RESPONSE" != "200" ]; then
 else
   fail "'baobab-erp' still obtained a token after being disabled"
 fi
-TRADE_TOKEN_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
+TRADE_TOKEN_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
   -d "client_id=baobab-trade" \
   -d "client_secret=$WORKLOAD_SECRET" \
   -d "grant_type=client_credentials")
@@ -175,7 +175,7 @@ else
   fail "'baobab-trade' unexpectedly lost access after an unrelated client was disabled (HTTP $TRADE_TOKEN_RESPONSE)"
 fi
 # Restore state for idempotent re-runs.
-curl -sf -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+curl -sf --max-time 30 -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
   "$KC_URL/admin/realms/$REALM/clients/$ERP_CLIENT_UUID" \
   -d '{"enabled": true}' > /dev/null
 
