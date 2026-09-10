@@ -1,0 +1,24 @@
+# CVE-2025-59250 (mssql-jdbc): confirmed false positive here, not silently
+# suppressing a real vulnerability.
+#
+# Keycloak 26.7.3 (the version this Dockerfile pins) declares
+# <mssql-jdbc.version>13.2.1.jre11</mssql-jdbc.version> in its own pom.xml --
+# not the bare "13.2.1" a naive read of the Trivy finding suggests. Microsoft's
+# published fixed-version list for this CVE explicitly includes 13.2.1.jre11.
+#
+# The false positive is a documented, maintainer-acknowledged Trivy/Grype
+# defect class for this exact package: mssql-jdbc's shipped JAR embeds its
+# version in pom.properties WITHOUT the ".jreNN" suffix ("13.2.1"), even
+# though the resolved Maven coordinate (and JAR filename) is "13.2.1.jre11".
+# Maven's version-ordering rules judge "13.2.1" < "13.2.1.jre8", so a scanner
+# reading pom.properties flags an already-patched build as vulnerable.
+# See: https://github.com/aquasecurity/trivy/discussions/9745
+#      https://github.com/anchore/grype/issues/3042
+#
+# Verified directly against keycloak/keycloak's pom.xml at the 26.7.3 tag
+# (docs/governance/gate-iam-0-discovery.md §4.10) since quay.io registry
+# access is blocked in this environment (same constraint as R-1). Revisit
+# if the pinned Keycloak/mssql-jdbc version changes, or if a future scan
+# flags a DIFFERENT CVE for mssql-jdbc -- that would need independent
+# verification, not coverage under this entry.
+CVE-2025-59250
