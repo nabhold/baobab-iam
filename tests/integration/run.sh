@@ -108,8 +108,15 @@ else
 fi
 
 echo "== 5. Wrong-client-secret rejection =="
+# Deliberately uses baobab-cms, not baobab-trade: the realm has
+# bruteForceProtected=true with a 60s minimumQuickLoginWaitSeconds, and a
+# service account is a user under the hood — one deliberately-wrong
+# attempt against baobab-trade here would trip its "quick retry" penalty
+# and cause test 8's later, legitimate baobab-trade check to be falsely
+# rejected. baobab-cms is otherwise unused in this suite, so it absorbs
+# the deliberate failure without poisoning a client checked elsewhere.
 BAD_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
-  -d "client_id=baobab-trade" \
+  -d "client_id=baobab-cms" \
   -d "client_secret=definitely-not-the-secret" \
   -d "grant_type=client_credentials")
 if [ "$BAD_RESPONSE" = "401" ]; then
