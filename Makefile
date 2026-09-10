@@ -12,7 +12,10 @@ bootstrap:
 
 test:
 	@echo "Running health checks..."
-	@curl -s http://localhost:8080/health/ready | grep -q "UP" || (echo "Keycloak not ready" && exit 1)
+	@# Keycloak 26 serves health/metrics on a separate management interface
+	@# (port 9000 by default), not the main HTTP port (8080) — see
+	@# https://www.keycloak.org/server/management-interface.
+	@curl -s http://localhost:9000/health/ready | grep -q "UP" || (echo "Keycloak not ready" && exit 1)
 	@echo "All tests passed."
 
 integration-test:
