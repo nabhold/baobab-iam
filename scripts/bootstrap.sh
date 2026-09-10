@@ -6,6 +6,18 @@ KC_ADMIN=${KEYCLOAK_ADMIN:-admin}
 KC_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin123}
 KC_URL=${KC_URL:-http://localhost:8080}
 
+# kcadm.sh persists its login session to $HOME/.keycloak/kcadm.config by
+# default. The runtime container has no /etc/passwd entry for its non-root
+# UID, so $HOME resolves to empty/"/" — which that UID cannot write to
+# ("Failed to create config file: /.keycloak/kcadm.config"). Rather than
+# depend on which directories under /opt/keycloak happen to be writable by
+# that UID, point the config file at a fresh file under /tmp, which is
+# writable by any UID regardless of image specifics.
+KCADM_CONFIG=$(mktemp)
+kcadm() {
+  /opt/keycloak/bin/kcadm.sh "$@" --config "$KCADM_CONFIG"
+}
+
 # Wait for Keycloak to be ready, then log in as admin.
 #
 # This retries kcadm's own login rather than curl-polling a health
@@ -20,7 +32,7 @@ KC_URL=${KC_URL:-http://localhost:8080}
 echo "Waiting for Keycloak at $KC_URL ..."
 READY=0
 for _ in $(seq 1 60); do
-  if /opt/keycloak/bin/kcadm.sh config credentials --server "$KC_URL" --realm master --user "$KC_ADMIN" --password "$KC_ADMIN_PASSWORD"; then
+  if kcadm config credentials --server "$KC_URL" --realm master --user "$KC_ADMIN" --password "$KC_ADMIN_PASSWORD"; then
     READY=1
     break
   fi
@@ -32,10 +44,10 @@ if [ "$READY" -ne 1 ]; then
 fi
 
 # Import realm if not exists
-REALM_EXISTS=$(/opt/keycloak/bin/kcadm.sh get realms/baobab > /dev/null 2>&1 && echo "yes" || echo "no")
+REALM_EXISTS=$(kcadm get realms/baobab > /dev/null 2>&1 && echo "yes" || echo "no")
 if [ "$REALM_EXISTS" = "no" ]; then
   echo "Creating realm 'baobab'..."
-  /opt/keycloak/bin/kcadm.sh create realms -f /opt/keycloak/config/realm/baobab-realm.json
+  kcadm create realms -f /opt/keycloak/config/realm/baobab-realm.json
 else
   echo "Realm 'baobab' already exists. Skipping creation."
 fi
@@ -47,7 +59,7 @@ for scope_file in /opt/keycloak/config/scopes/*.json; do
   if [ -f "$scope_file" ]; then
     SCOPE_NAME=$(jq -r '.name' "$scope_file")
     echo "Creating client scope '$SCOPE_NAME' ..."
-    /opt/keycloak/bin/kcadm.sh create client-scopes -r baobab -f "$scope_file" || echo "Client scope '$SCOPE_NAME' may already exist; skipping."
+    kcadm create client-scopes -r baobab -f "$scope_file" || echo "Client scope '$SCOPE_NAME' may already exist; skipping."
   fi
 done
 
@@ -66,10 +78,10 @@ for client_file in /opt/keycloak/config/clients/*-workload.json; do
     if [ -n "${BOOTSTRAP_WORKLOAD_CLIENT_SECRET:-}" ]; then
       TMP_FILE=$(mktemp)
       jq --arg secret "$BOOTSTRAP_WORKLOAD_CLIENT_SECRET" '. + {secret: $secret}' "$client_file" > "$TMP_FILE"
-      /opt/keycloak/bin/kcadm.sh create clients -r baobab -f "$TMP_FILE" || echo "Client '$CLIENT_ID' may already exist; skipping."
+      kcadm create clients -r baobab -f "$TMP_FILE" || echo "Client '$CLIENT_ID' may already exist; skipping."
       rm -f "$TMP_FILE"
     else
-      /opt/keycloak/bin/kcadm.sh create clients -r baobab -f "$client_file" || echo "Client '$CLIENT_ID' may already exist; skipping."
+      kcadm create clients -r baobab -f "$client_file" || echo "Client '$CLIENT_ID' may already exist; skipping."
     fi
   fi
 done
@@ -85,8 +97,9 @@ for client_file in /opt/keycloak/config/clients/*.json; do
   if [ -f "$client_file" ]; then
     CLIENT_ID=$(jq -r '.clientId' "$client_file")
     echo "Importing client '$CLIENT_ID' ..."
-    /opt/keycloak/bin/kcadm.sh create clients -r baobab -f "$client_file" || echo "Client '$CLIENT_ID' may already exist; skipping."
+    kcadm create clients -r baobab -f "$client_file" || echo "Client '$CLIENT_ID' may already exist; skipping."
   fi
 done
 
+rm -f "$KCADM_CONFIG"
 echo "Bootstrap completed."
