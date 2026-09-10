@@ -1,0 +1,10 @@
+{
+  "name": "context:resolve",
+  "description": "Grants permission to call baobab-cp's POST /v1/context/resolve boundary. Required (alongside actor_type=workload, a populated azp, and a populated tenant_id claim) by baobab-cp's authorize() middleware for every engine workload client.",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "true",
+    "display.on.consent.screen": "false"
+  },
+  "protocolMappers": []
+}

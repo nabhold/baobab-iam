@@ -6,36 +6,73 @@ on:
   pull_request:
     branches: [ main ]
 
-jobs:
-  foundation:
-    # Use the reusable Foundation gate from nabhold/shared
-    uses: nabhold/shared/.github/workflows/foundation-gates.yml@<SHA> # v1.x.x
-    with:
-      environment: development
-    secrets: inherit
+# NOTE: Foundation Repository Gates run via the separately-maintained
+# .github/workflows/foundation.yml (pinned to nabhold/shared's v1.2.0 tag).
+# This file previously also declared its own "foundation" job pointing at a
+# nonexistent workflow path (foundation-gates.yml vs. the real
+# foundation-repository-gates.yml) with an unresolved "<SHA>" placeholder;
+# that job never could have run. Removed rather than fixed in place to
+# avoid maintaining the same gate twice.
 
+jobs:
   build:
     runs-on: ubuntu-latest
-    needs: foundation
     steps:
-      - uses: actions/checkout@<SHA> # v4.x.x
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@<SHA> # v3.x.x
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
       - name: Build image
-        uses: docker/build-push-action@<SHA> # v5.x.x
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           push: false
           load: true
           tags: baobab-iam:test
-      - name: Run container and test health
-        run: |
-          docker run -d --name test-iam -p 8080:8080 baobab-iam:test
-          sleep 30
-          curl -f http://localhost:8080/health/ready
+      # A standalone `docker run` health check was previously attempted here,
+      # but this image's CMD runs Keycloak in production mode ("start", not
+      # "start-dev"), which requires a reachable PostgreSQL database to ever
+      # reach /health/ready — a bare `docker run` with no database would
+      # just hang until the curl timeout. The integration-test job below
+      # runs the full docker-compose stack (with Postgres) and is where
+      # boot/health/bootstrap is actually exercised.
       - name: Security scan (Trivy)
-        uses: aquasecurity/trivy-action@<SHA> # v0.18.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: baobab-iam:test
           severity: CRITICAL,HIGH
           format: table
+
+  integration-test:
+    runs-on: ubuntu-latest
+    env:
+      BOOTSTRAP_WORKLOAD_CLIENT_SECRET: ci-test-only-secret-do-not-use-in-prod
+      KC_URL: http://localhost:8080
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Build and start stack
+        run: docker compose up -d --build
+      - name: Wait for Keycloak to accept connections
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null "$KC_URL/health/ready"; then
+              echo "Keycloak is ready."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Keycloak did not become ready in time." >&2
+          docker compose logs keycloak
+          exit 1
+      - name: Bootstrap realm (ADR-0002 configuration-as-code)
+        run: |
+          docker compose exec -T \
+            -e "BOOTSTRAP_WORKLOAD_CLIENT_SECRET=$BOOTSTRAP_WORKLOAD_CLIENT_SECRET" \
+            keycloak /opt/keycloak/bootstrap.sh
+      - name: Run ADR-0002 Section 48 verification suite
+        run: ./tests/integration/run.sh
+      - name: Dump Keycloak logs on failure
+        if: failure()
+        run: docker compose logs keycloak
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

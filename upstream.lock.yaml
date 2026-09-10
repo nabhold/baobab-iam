@@ -3,5 +3,14 @@
 keycloak:
   version: "26.7.3"
   image: "quay.io/keycloak/keycloak"
-  digest: "sha256:0b8a8b9c1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9"
-  # Yes, the digest above is an example; we will replace it with the actual SHA after pulling.
+  # UNRESOLVED — this is not yet a real digest and SHALL NOT be treated as
+  # one. ADR-0002 Section 10 requires the digest pinned here, but resolving
+  # it requires registry access this development environment's network
+  # policy denies (quay.io is blocked). A human or a CI job with registry
+  # egress must run the command below and replace this value before this
+  # pin can be relied on. Tracked as R-1 in
+  # docs/governance/gate-iam-0-discovery.md.
+  #
+  #   docker buildx imagetools inspect quay.io/keycloak/keycloak:26.7.3
+  #
+  digest: "UNRESOLVED-see-R-1-in-docs/governance/gate-iam-0-discovery.md"
