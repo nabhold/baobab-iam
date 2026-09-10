@@ -146,6 +146,28 @@ inflicted by that fix and has been corrected by removing the curl dependency ent
 in favor of retrying `kcadm.sh`'s own login instead of curl-polling a health endpoint;
 it does not appear in the risk register because it was fully resolved within this PR.)
 
+### 4.9 Four workload clients silently collided with their resource-server counterparts
+Once the integration suite could actually run end-to-end, `baobab-trade-workload.json`'s
+service-account client intermittently failed to authenticate with its own correct secret —
+not a flake. `config/clients/baobab-cms-workload.json`, `baobab-erp-workload.json`,
+`baobab-pulse-workload.json`, and `baobab-trade-workload.json` all declared the **same**
+`clientId` as their non-workload, `bearerOnly` counterpart (`baobab-cms.json`,
+`baobab-erp.json`, `baobab-pulse.json`, `baobab-trade.json` respectively) — e.g. both
+`baobab-trade.json` and `baobab-trade-workload.json` used `clientId: "baobab-trade"`.
+`bootstrap.sh` creates both, so the realm ends up with two distinct client resources
+answering to the same `clientId`; which one Keycloak's token endpoint resolves for a given
+request is undefined, so a `client_credentials` grant against that `clientId` sometimes hit
+the correct service-account client and sometimes hit the `bearerOnly` one (which has no
+service account at all and can never authenticate), producing exactly the non-deterministic
+`invalid_client_credentials` failures observed. This is a direct violation of ADR-0002 §15
+("Client Isolation" — "Each service SHALL have distinct credentials... independently
+revocable identities"). `thamani-backend-workload.json`/`thamani-web.json` and
+`zuribeans-backend-workload.json`/`zuribeans-web.json` already used distinct clientIds
+correctly (`thamani-backend` vs `thamani-web`, etc.) — only the four engines without a
+paired browser client had this collision. Fixed by renaming each affected workload
+client's `clientId` (and matching `serviceAccountsClientId`) to `<engine>-workload`,
+matching its filename.
+
 ---
 
 ## 5. Risk Register

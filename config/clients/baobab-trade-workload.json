@@ -1,5 +1,5 @@
 {
-  "clientId": "baobab-trade",
+  "clientId": "baobab-trade-workload",
   "name": "Baobab Trade Workload",
   "description": "Workload identity for the Trade engine",
   "enabled": true,
@@ -32,5 +32,5 @@
     "offline_access",
     "microprofile-jwt"
   ],
-  "serviceAccountsClientId": "baobab-trade"
+  "serviceAccountsClientId": "baobab-trade-workload"
 }

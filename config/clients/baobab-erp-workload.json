@@ -1,5 +1,5 @@
 {
-  "clientId": "baobab-erp",
+  "clientId": "baobab-erp-workload",
   "name": "Baobab ERP Workload",
   "description": "Workload identity for the ERP engine",
   "enabled": true,
@@ -32,5 +32,5 @@
     "offline_access",
     "microprofile-jwt"
   ],
-  "serviceAccountsClientId": "baobab-erp"
+  "serviceAccountsClientId": "baobab-erp-workload"
 }

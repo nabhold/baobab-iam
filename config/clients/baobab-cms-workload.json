@@ -1,5 +1,5 @@
 {
-  "clientId": "baobab-cms",
+  "clientId": "baobab-cms-workload",
   "name": "Baobab CMS Workload",
   "description": "Workload identity for the CMS engine",
   "enabled": true,
@@ -32,5 +32,5 @@
     "offline_access",
     "microprofile-jwt"
   ],
-  "serviceAccountsClientId": "baobab-cms"
+  "serviceAccountsClientId": "baobab-cms-workload"
 }

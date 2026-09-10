@@ -1,5 +1,5 @@
 {
-  "clientId": "baobab-pulse",
+  "clientId": "baobab-pulse-workload",
   "name": "Baobab Pulse Workload",
   "description": "Workload identity for the Pulse intelligence engine",
   "enabled": true,
@@ -32,5 +32,5 @@
     "offline_access",
     "microprofile-jwt"
   ],
-  "serviceAccountsClientId": "baobab-pulse"
+  "serviceAccountsClientId": "baobab-pulse-workload"
 }

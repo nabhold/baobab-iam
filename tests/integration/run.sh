@@ -77,13 +77,19 @@ else
 fi
 
 echo "== 4. Workload client-credentials grant + actor_type/scope claims =="
+# baobab-trade-workload, not baobab-trade: baobab-trade.json (bearerOnly,
+# no service account) and baobab-trade-workload.json used to share the
+# same clientId "baobab-trade" before this suite caught it — Keycloak had
+# two client resources answering to one clientId, so which one a token
+# request actually resolved to was undefined. Fixed by giving every
+# workload client its own distinct clientId (config/clients/*-workload.json).
 TOKEN_RESPONSE=$(curl -s --max-time 30 -X POST "$TOKEN_ENDPOINT" \
-  -d "client_id=baobab-trade" \
+  -d "client_id=baobab-trade-workload" \
   -d "client_secret=$WORKLOAD_SECRET" \
   -d "grant_type=client_credentials")
 ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
 if [ -n "$ACCESS_TOKEN" ]; then
-  pass "workload client 'baobab-trade' obtained an access token via client_credentials"
+  pass "workload client 'baobab-trade-workload' obtained an access token via client_credentials"
   PAYLOAD=$(jwt_payload "$ACCESS_TOKEN")
   ACTOR_TYPE=$(echo "$PAYLOAD" | jq -r '.actor_type // empty')
   SCOPE=$(echo "$PAYLOAD" | jq -r '.scope // empty')
@@ -104,19 +110,20 @@ if [ -n "$ACCESS_TOKEN" ]; then
     fail "token issuer '$TOKEN_ISS' != expected '$EXPECTED_ISSUER'"
   fi
 else
-  fail "workload client 'baobab-trade' did not receive an access token: $TOKEN_RESPONSE"
+  fail "workload client 'baobab-trade-workload' did not receive an access token: $TOKEN_RESPONSE"
 fi
 
 echo "== 5. Wrong-client-secret rejection =="
-# Deliberately uses baobab-cms, not baobab-trade: the realm has
-# bruteForceProtected=true with a 60s minimumQuickLoginWaitSeconds, and a
-# service account is a user under the hood — one deliberately-wrong
-# attempt against baobab-trade here would trip its "quick retry" penalty
-# and cause test 8's later, legitimate baobab-trade check to be falsely
-# rejected. baobab-cms is otherwise unused in this suite, so it absorbs
-# the deliberate failure without poisoning a client checked elsewhere.
+# Deliberately uses baobab-cms-workload, not baobab-trade-workload: the
+# realm has bruteForceProtected=true with a 60s minimumQuickLoginWaitSeconds,
+# and a service account is a user under the hood — one deliberately-wrong
+# attempt against baobab-trade-workload here would trip its "quick retry"
+# penalty and cause test 8's later, legitimate check to be falsely
+# rejected. baobab-cms-workload is otherwise unused in this suite, so it
+# absorbs the deliberate failure without poisoning a client checked
+# elsewhere.
 BAD_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
-  -d "client_id=baobab-cms" \
+  -d "client_id=baobab-cms-workload" \
   -d "client_secret=definitely-not-the-secret" \
   -d "grant_type=client_credentials")
 if [ "$BAD_RESPONSE" = "401" ]; then
@@ -159,27 +166,27 @@ done
 
 echo "== 8. Independent workload client revocation =="
 ERP_CLIENT_UUID=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
-  "$KC_URL/admin/realms/$REALM/clients?clientId=baobab-erp" | jq -r '.[0].id')
+  "$KC_URL/admin/realms/$REALM/clients?clientId=baobab-erp-workload" | jq -r '.[0].id')
 curl -sf --max-time 30 -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
   "$KC_URL/admin/realms/$REALM/clients/$ERP_CLIENT_UUID" \
   -d '{"enabled": false}' > /dev/null
 ERP_TOKEN_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
-  -d "client_id=baobab-erp" \
+  -d "client_id=baobab-erp-workload" \
   -d "client_secret=$WORKLOAD_SECRET" \
   -d "grant_type=client_credentials")
 if [ "$ERP_TOKEN_RESPONSE" != "200" ]; then
-  pass "disabling 'baobab-erp' independently revokes its ability to obtain tokens (HTTP $ERP_TOKEN_RESPONSE)"
+  pass "disabling 'baobab-erp-workload' independently revokes its ability to obtain tokens (HTTP $ERP_TOKEN_RESPONSE)"
 else
-  fail "'baobab-erp' still obtained a token after being disabled"
+  fail "'baobab-erp-workload' still obtained a token after being disabled"
 fi
 TRADE_TOKEN_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST "$TOKEN_ENDPOINT" \
-  -d "client_id=baobab-trade" \
+  -d "client_id=baobab-trade-workload" \
   -d "client_secret=$WORKLOAD_SECRET" \
   -d "grant_type=client_credentials")
 if [ "$TRADE_TOKEN_RESPONSE" = "200" ]; then
-  pass "revoking 'baobab-erp' did not affect unrelated workload 'baobab-trade' (independent revocation, ADR-0007)"
+  pass "revoking 'baobab-erp-workload' did not affect unrelated workload 'baobab-trade-workload' (independent revocation, ADR-0007)"
 else
-  fail "'baobab-trade' unexpectedly lost access after an unrelated client was disabled (HTTP $TRADE_TOKEN_RESPONSE)"
+  fail "'baobab-trade-workload' unexpectedly lost access after an unrelated client was disabled (HTTP $TRADE_TOKEN_RESPONSE)"
 fi
 # Restore state for idempotent re-runs.
 curl -sf --max-time 30 -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
