@@ -168,6 +168,56 @@ paired browser client had this collision. Fixed by renaming each affected worklo
 client's `clientId` (and matching `serviceAccountsClientId`) to `<engine>-workload`,
 matching its filename.
 
+### 4.10 R-8 re-examined: one finding is a false positive, one is real and unfixable today
+Gate IAM-3 revisited R-8 (§4.7) instead of leaving it as a single "needs a Keycloak
+upgrade" line. `quay.io` is still network-blocked in this session (same as R-1), so the
+image itself couldn't be pulled directly — but `keycloak/keycloak`'s and
+`quarkusio/quarkus`'s own `pom.xml` files at the exact pinned tags (`26.7.3` and
+`3.33.3.1` respectively) are public and were fetched directly, which is enough to
+resolve both findings without registry access:
+
+- **`mssql-jdbc` (CVE-2025-59250, HIGH) — false positive, now suppressed.**
+  `keycloak/keycloak`'s `pom.xml` at the `26.7.3` tag pins
+  `<mssql-jdbc.version>13.2.1.jre11</mssql-jdbc.version>` — not bare `13.2.1`. Microsoft's
+  published fixed-version list for this CVE includes `13.2.1.jre11` explicitly. The false
+  positive is a documented, maintainer-acknowledged Trivy/Grype defect class for this
+  exact package: the shipped JAR's internal `pom.properties` records the version without
+  its `.jreNN` suffix (`13.2.1`), and Maven's version-ordering rules judge
+  `13.2.1 < 13.2.1.jre8` — so a scanner reading `pom.properties` flags an already-patched
+  build as vulnerable (see `aquasecurity/trivy` discussion #9745 and `anchore/grype` issue
+  #3042). Suppressed via a new root `.trivyignore` entry with this justification recorded
+  inline, the same standard applied to the one confirmed `.gitleaksignore` false positive
+  earlier in this programme (verify externally first, document why, never suppress a
+  finding that isn't actually resolved).
+- **`netty-handler` (CVE-2026-75595, CRITICAL) — real, and no fix exists to upgrade to
+  yet.** `quarkusio/quarkus`'s `pom.xml` at the `3.33.3.1` tag (the Quarkus version
+  Keycloak 26.7.3 embeds) pins `<netty.version>4.1.136.Final</netty.version>`, below the
+  vendor's fixed version (`4.1.137.Final`, released 2026-08-06). Keycloak 26.7.3
+  (released ~2026-08-31/09-03) is confirmed the latest available Keycloak release as of
+  this session's date (2026-09-10) — there is no `26.7.4`, `26.8.0`, or `27.x` yet. The
+  CVE's own disclosure appears to postdate Keycloak's 26.7.3 release cut, so upstream has
+  had no opportunity to respond; this is not a case of Baobab lagging behind an available
+  fix. **Not suppressed** — it is a real, currently-unpatched vulnerability in a bundled
+  dependency, not a scanner artifact, so hiding it would be exactly the "masking a genuine
+  issue" this programme has refused to do elsewhere (e.g. the curl CVEs in §4.7's
+  parenthetical).
+
+  One mitigating fact worth recording rather than acting on: CVE-2026-75595 is an SNI
+  routing bypass that only matters to a Netty server doing per-SNI virtual-hosting with
+  mutual TLS (`clientAuth=REQUIRE`) as its *sole* authentication gate. This Dockerfile's
+  `CMD` runs Keycloak with `--http-enabled=true` and no `--https-*`/keystore flags — grep
+  across the whole repo turns up no TLS/keystore/SNI configuration anywhere — consistent
+  with ADR-0002 §32's "TLS boundary" + "proxy/forwarded-header trust" pairing, which reads
+  as TLS terminating upstream (the platform's API gateway, not Keycloak's own embedded
+  Netty/Vert.x listener). So this deployment does not appear to exercise the vulnerable
+  code path today. That is context for triage priority, not a reason to close R-8: the
+  library is still bundled, "not currently exercised" can silently stop being true if the
+  deployment topology changes, and the fix is still owed the moment one ships upstream.
+
+`.trivyignore` and this section are the only changes from this pass; the Dockerfile/image
+pin (`quay.io/keycloak/keycloak:26.7.3`) is untouched, since it is already the latest
+available release and re-pinning to itself would be a no-op.
+
 ---
 
 ## 5. Risk Register
@@ -181,7 +231,7 @@ matching its filename.
 | R-5 | No reason-code registry, `AuthenticationAssurance`, or `Delegation` contract exists in `shared` | Medium — blocks step-up auth (ADR-0015) and confused-deputy defenses (§69 of programme spec) | Tracked for next IAM-1 session |
 | R-6 | `infrastructure` repo provisions no Keycloak service at all | Medium — no path to a real deployed environment yet | Tracked for a future IAM-2/IAM-14 session |
 | R-7 | Zero automated tests exist against a live Keycloak instance in `baobab-iam` (ADR-0002 §48 "Required Verification" is entirely unmet) | High — "Gate IAM-2 complete" cannot be substantiated | Partially addressed in this session's IAM-2 hardening PR (OIDC discovery/JWKS/client-credentials/actor_type assertions); full PKCE browser-flow and DR-restore tests remain out of scope |
-| R-8 | Keycloak 26.7.3 bundles `netty-handler` 4.1.136.Final (CVE-2026-75595, **CRITICAL**) and `mssql-jdbc` 13.2.1 (CVE-2025-59250, **HIGH**) (§4.7) | Critical — blocks `foundation / vulnerability-scan` from ever going green on the pinned version | **Needs human/CI action**: a deliberate Keycloak point-release upgrade per ADR-0002 §39 (this session cannot verify a fixed release exists or pull a candidate image — quay.io is network-blocked, same constraint as R-1) |
+| R-8 | Keycloak 26.7.3 bundles `netty-handler` 4.1.136.Final (CVE-2026-75595, **CRITICAL**, real — no fixed Keycloak release exists yet as of 2026-09-10) and previously also flagged `mssql-jdbc` 13.2.1.jre11 (CVE-2025-59250, HIGH — confirmed **false positive**, now suppressed via `.trivyignore`) (§4.10) | High — `foundation / vulnerability-scan` will stay red on `netty-handler` until upstream Quarkus/Keycloak bumps netty past 4.1.137.Final; not exploitable in this deployment's actual topology today (§4.10), which is context for priority, not a reason to close this row | **Needs human/CI action**: watch for the next Keycloak point release and bump the pin the moment one ships with netty ≥ 4.1.137.Final/4.2.17.Final; re-verify via `quay.io/keycloak/keycloak`'s manifest once registry egress is available (R-1's same constraint) |
 
 ---
 
