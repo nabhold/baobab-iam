@@ -1,10 +1,22 @@
 {
   "name": "context:resolve",
-  "description": "Grants permission to call baobab-cp's POST /v1/context/resolve boundary. Required (alongside actor_type=workload, a populated azp, and a populated tenant_id claim) by baobab-cp's authorize() middleware for every engine workload client.",
+  "description": "Grants permission to call baobab-cp's POST /v1/context/resolve and POST /v1/resolve boundaries. Required (alongside actor_type=workload and a populated azp) by baobab-cp's authorize() middleware for every engine workload client. Also carries the aud=baobab-control-plane protocol mapper below, matching this scope's audience declaration in nabhold/shared's contracts/authorization/v1/scope-registry.yaml (ADR-0007 §§24-25) -- every client granted this scope gets the audience claim baobab-cp's go-oidc verifier requires, without needing a per-client mapper.",
   "protocol": "openid-connect",
   "attributes": {
     "include.in.token.scope": "true",
     "display.on.consent.screen": "false"
   },
-  "protocolMappers": []
+  "protocolMappers": [
+    {
+      "name": "audience-baobab-control-plane",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.custom.audience": "baobab-control-plane",
+        "id.token.claim": "false",
+        "access.token.claim": "true"
+      }
+    }
+  ]
 }
