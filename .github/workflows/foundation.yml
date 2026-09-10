@@ -35,4 +35,11 @@ jobs:
       # TODO: set to "" if this engine does not build a container image.
       dockerfile: "Dockerfile"
       build_context: "."
-      dependency_review_enabled: true
+      # false until this repository's own Dependency graph (Settings ->
+      # Security -> Code security -> Dependency graph) is actually enabled
+      # -- the reusable workflow's own input description says to enable
+      # this "only after" that precondition is met, but it was flipped to
+      # true here prematurely, which is why `foundation / dependency-review`
+      # has been failing ("Dependency graph not enabled in repo Settings").
+      # Flip back to true once an org admin turns it on for this repo.
+      dependency_review_enabled: false

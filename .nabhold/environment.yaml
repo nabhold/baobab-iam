@@ -1,5 +1,49 @@
 # .nabhold/environment.yaml – Foundation 4 baseline
-version: 1
-profile: full
+#
+# Conforms to nabhold/shared's Development Environment Contract
+# (contracts/development-environment/schema.yaml), validated by the
+# `foundation / repository-contract` CI job (nabhold/shared's
+# foundation-repository-gates.yml, called from .github/workflows/
+# foundation.yml). Previously only declared `version`/`profile`/`contracts`,
+# none of which the actual schema requires or recognizes — the real
+# required fields (schema/application/environment/compatibility_policy/
+# validation) were entirely missing, which is why this job failed outright
+# ("invalid environment contract name"). Modelled on nabhold/shared's own
+# declaration, the schema's canonical reference example.
+schema:
+  name: nabhold-development-environment-contract
+  version: "1.0"
+application:
+  name: baobab-iam
+  version: "0.1.0"
+environment:
+  provider: baobab-dev
+  profile: full
+  # Must literally match the image tag .devcontainer/devcontainer.json
+  # pins (the validator checks the devcontainer file contains
+  # "ghcr.io/nabhold/baobab-dev:<minimum_version>" verbatim for the "full"
+  # profile, which has no tag suffix).
+  minimum_version: "1.3.0"
+  contract_minimum_version: "1.0"
+compatibility_policy:
+  strict_runtime_versions: true
+  allow_newer_patch_versions: true
+  allow_newer_minor_versions: false
+  allow_older_versions: false
+validation:
+  # Drawn from the "full" profile's capability_domains (schema.yaml) --
+  # the subset baobab-iam actually depends on per its own Makefile:
+  # docker-compose (development.docker), gh workflows (development.
+  # github_cli), Keycloak's PostgreSQL backend (database.postgresql), and
+  # jq/yq used directly by `make lint`.
+  required_capabilities:
+    - development.docker
+    - development.github_cli
+    - database.postgresql
+    - utilities.jq
+    - utilities.yq
+# Not part of the Development Environment Contract schema itself; carried
+# over from the prior declaration as supplementary metadata pointing at
+# this repo's shared-contract consumer lock.
 contracts:
   - lockfile: contracts.lock.yaml
