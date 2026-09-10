@@ -48,6 +48,18 @@ COPY config/ /opt/keycloak/config/
 COPY scripts/bootstrap.sh /opt/keycloak/bootstrap.sh
 RUN chmod +x /opt/keycloak/bootstrap.sh
 
+# `db` is a build-time option in Keycloak: an `--optimized` runtime start
+# (see the final stage's CMD) skips re-augmentation and so ignores any
+# `KC_DB` set only at runtime (docker-compose.yml's own `KC_DB: postgres`
+# is therefore not enough by itself) — it must already be baked into this
+# build. Without this, the container never reaches a running state: it
+# silently keeps whatever `db` this build step defaulted to and never
+# becomes healthy, which is what happened before this was added (the
+# integration-test job's Keycloak container ran for 5 minutes without
+# ever reaching /health/ready). Connection details (db-url/username/
+# password) remain correctly runtime-only, set in docker-compose.yml.
+ENV KC_DB=postgres
+
 # Build the Keycloak distribution (optimized)
 RUN /opt/keycloak/bin/kc.sh build
 
