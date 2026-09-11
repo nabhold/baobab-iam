@@ -14,6 +14,38 @@
   "maxDeltaTimeSeconds": 43200,
   "failureFactor": 30,
   "defaultRoles": ["offline_access", "uma_authorization"],
+  "roles": {
+    "realm": [
+      {
+        "name": "iam:security-admin",
+        "description": "Gate IAM-5 (ADR-0009 §15,§61,§102-103): IAM/Keycloak security administration. Distinct from iam:helpdesk; grants no privilege in other domains (§14)."
+      },
+      {
+        "name": "iam:helpdesk",
+        "description": "Gate IAM-5 (ADR-0009 §61-62,§102): user lookup and approved recovery assistance. Does not imply iam:security-admin (§61)."
+      },
+      {
+        "name": "cp:platform-admin",
+        "description": "Gate IAM-5 (ADR-0009 §16,§103): baobab-cp platform administration (tenants, capabilities, canonical mappings). No authority in IAM/ERP/Trade/CMS (§14)."
+      },
+      {
+        "name": "cp:tenant-admin",
+        "description": "Gate IAM-5 (ADR-0009 §102): tenant-scoped baobab-cp administration, narrower than cp:platform-admin."
+      },
+      {
+        "name": "trade:operator",
+        "description": "Gate IAM-5 (ADR-0009 §17,§103): baobab-trade commerce administration per Trade's own policy. No authority in CP/ERP/CMS/IAM (§14,§17)."
+      },
+      {
+        "name": "cms:editor",
+        "description": "Gate IAM-5 (ADR-0009 §20): CMS content create/edit/submit-for-review. Does not include cms:publisher (§20-21)."
+      },
+      {
+        "name": "cms:publisher",
+        "description": "Gate IAM-5 (ADR-0009 §21,§103): CMS publish authority, separable from cms:editor. No authority in CP/ERP/Trade/IAM (§14)."
+      }
+    ]
+  },
   "requiredCredentials": ["password"],
   "passwordPolicy": "length(8) and digits and lowerCase and upperCase and notUsername",
   "otpPolicyType": "totp",

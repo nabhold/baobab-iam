@@ -287,6 +287,64 @@ fi
 # work (see README.md's Status section), not something Gate IAM-4 can test
 # against real infrastructure until it exists.
 
+echo "== 11. Workforce admin client separation (Gate IAM-5, ADR-0009 §9-10) =="
+ADMIN_TOKEN=$(get_admin_token)
+for CLIENT_ID in baobab-control-plane-admin baobab-cms-admin baobab-trade-admin; do
+  CLIENT_JSON=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/clients?clientId=$CLIENT_ID" | jq '.[0]')
+  if [ "$CLIENT_JSON" = "null" ] || [ -z "$CLIENT_JSON" ]; then
+    fail "$CLIENT_ID is not provisioned"
+    continue
+  fi
+  STANDARD_FLOW=$(echo "$CLIENT_JSON" | jq -r '.standardFlowEnabled')
+  BEARER_ONLY=$(echo "$CLIENT_JSON" | jq -r '.bearerOnly')
+  PKCE_METHOD=$(echo "$CLIENT_JSON" | jq -r '.attributes["pkce.code.challenge.method"] // empty')
+  if [ "$STANDARD_FLOW" = "true" ] && [ "$BEARER_ONLY" = "false" ] && [ "$PKCE_METHOD" = "S256" ]; then
+    pass "$CLIENT_ID is a distinct SSO login client (standardFlow, not bearer-only, PKCE S256)"
+  else
+    fail "$CLIENT_ID login config is wrong (standardFlow=$STANDARD_FLOW bearerOnly=$BEARER_ONLY pkce=$PKCE_METHOD)"
+  fi
+  DEFAULT_SCOPES=$(echo "$CLIENT_JSON" | jq -r '.defaultClientScopes | join(",")')
+  if [[ "$DEFAULT_SCOPES" == *"actor-type-human"* ]]; then
+    pass "$CLIENT_ID has the actor-type-human default scope attached"
+  else
+    fail "$CLIENT_ID is missing the actor-type-human default scope (scopes: $DEFAULT_SCOPES)"
+  fi
+done
+# ADR-0009 §10: each admin client is a distinct registration from the
+# engine's own bearer-only resource-server client (baobab-control-plane,
+# baobab-cms, baobab-trade) -- confirming they're separate clientIds, not
+# that one was reused, since §9 explicitly prohibits a universal admin
+# client covering multiple systems.
+ENGINE_CLIENT_COUNT=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/clients?clientId=baobab-control-plane" | jq 'length')
+if [ "$ENGINE_CLIENT_COUNT" = "1" ]; then
+  pass "baobab-control-plane (engine) and baobab-control-plane-admin (workforce) remain distinct client registrations"
+else
+  fail "expected exactly one baobab-control-plane client alongside the new admin client, found $ENGINE_CLIENT_COUNT"
+fi
+
+echo "== 12. Workforce role namespace least privilege (ADR-0009 §13, §87-88, §102-103) =="
+for ROLE in "iam:security-admin" "iam:helpdesk" "cp:platform-admin" "cp:tenant-admin" "trade:operator" "cms:editor" "cms:publisher"; do
+  # ":" is a valid unencoded path-segment character per RFC 3986 pchar, so
+  # the role name needs no percent-encoding here.
+  ROLE_JSON=$(curl -s --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/roles/$ROLE")
+  ROLE_NAME=$(echo "$ROLE_JSON" | jq -r '.name // empty')
+  if [ "$ROLE_NAME" = "$ROLE" ]; then
+    pass "realm role '$ROLE' is provisioned"
+  else
+    fail "realm role '$ROLE' is not provisioned"
+  fi
+done
+DEFAULT_REALM_ROLE_NAMES=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/roles/default-roles-$REALM/composites" | jq -r '[.[].name] | join(",")')
+if [[ "$DEFAULT_REALM_ROLE_NAMES" != *"iam:"* ]] && [[ "$DEFAULT_REALM_ROLE_NAMES" != *"cp:"* ]] && [[ "$DEFAULT_REALM_ROLE_NAMES" != *"trade:"* ]] && [[ "$DEFAULT_REALM_ROLE_NAMES" != *"cms:"* ]]; then
+  pass "no workforce admin role is granted by default to a new user (ADR-0009 §13 least privilege, §87-88 no privileged JIT)"
+else
+  fail "a workforce admin role is unexpectedly part of default-roles-$REALM: $DEFAULT_REALM_ROLE_NAMES"
+fi
+
 echo ""
 echo "== Summary: $PASS passed, $FAIL failed =="
 if [ "$FAIL" -gt 0 ]; then

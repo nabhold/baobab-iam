@@ -11,12 +11,17 @@
   [Gate IAM-0 discovery](./docs/governance/gate-iam-0-discovery.md) for the verified
   implementation state and open risks (notably R-1: the pinned Keycloak image digest in
   `upstream.lock.yaml` is still a placeholder pending registry access). Gate IAM-3's
-  Control Plane identity spine (`CanonicalIdentity`/`ExternalIdentity`, in `baobab-cp`) is
-  **complete** — see [Gate IAM-3 scope](./docs/governance/gate-iam-3-canonical-identity-scope.md).
-- **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline). Gate IAM-4
-  (workload identity, ADR-0007) is scoped and underway — see
-  [Gate IAM-4 scope](./docs/governance/gate-iam-4-workload-identity-scope.md) — then Gates IAM-5
-  through IAM-16 now that the identity spine underneath them is sound.
+  Control Plane identity spine (`CanonicalIdentity`/`ExternalIdentity`, in `baobab-cp`) and
+  Gate IAM-4 (workload identity, ADR-0007) are **complete** — see
+  [Gate IAM-3 scope](./docs/governance/gate-iam-3-canonical-identity-scope.md) and
+  [Gate IAM-4 scope](./docs/governance/gate-iam-4-workload-identity-scope.md). Gate IAM-5
+  (workforce SSO, ADR-0009) phase 1 is complete (distinct workforce admin clients, a starter
+  role namespace, and a real `baobab-cp` admin-authorization defect fixed) — see
+  [Gate IAM-5 scope](./docs/governance/gate-iam-5-workforce-sso-scope.md) for phases 2+.
+- **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline) and Gate
+  IAM-5's remaining phases (real OIDC wiring in `baobab-cms`/`baobab-trade`, `baobab-cp`
+  role-aware admin authorization), then Gates IAM-6 through IAM-16 now that the identity
+  spine underneath them is sound.
 
 ---
 

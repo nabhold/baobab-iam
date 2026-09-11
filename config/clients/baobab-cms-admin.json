@@ -1,0 +1,41 @@
+{
+  "clientId": "baobab-cms-admin",
+  "name": "Baobab CMS — Workforce Administration",
+  "description": "Gate IAM-5 (ADR-0009 §9): workforce SSO client for Payload CMS's admin panel. Confidential, distinct from the bearer-only baobab-cms client.",
+  "enabled": true,
+  "publicClient": false,
+  "bearerOnly": false,
+  "serviceAccountsEnabled": false,
+  "protocol": "openid-connect",
+  "directAccessGrantsEnabled": false,
+  "implicitFlowEnabled": false,
+  "standardFlowEnabled": true,
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "oauth2.device.authorization.grant.enabled": "false",
+    "backchannel.logout.session.required": "true",
+    "backchannel.logout.revoke.offline.tokens": "false"
+  },
+  "authenticationFlowBindingOverrides": {},
+  "defaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "email",
+    "roles",
+    "openid",
+    "actor-type-human"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ],
+  "redirectUris": [
+    "http://localhost:3002/*"
+  ],
+  "webOrigins": [
+    "http://localhost:3002"
+  ]
+}
