@@ -1,0 +1,41 @@
+{
+  "clientId": "baobab-control-plane-admin",
+  "name": "Baobab Control Plane — Workforce Administration",
+  "description": "Gate IAM-5 (ADR-0009 §9): workforce SSO client for baobab-cp's admin surface. Public+PKCE, distinct from the bearer-only baobab-control-plane client.",
+  "enabled": true,
+  "publicClient": true,
+  "bearerOnly": false,
+  "serviceAccountsEnabled": false,
+  "protocol": "openid-connect",
+  "directAccessGrantsEnabled": false,
+  "implicitFlowEnabled": false,
+  "standardFlowEnabled": true,
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "oauth2.device.authorization.grant.enabled": "false",
+    "backchannel.logout.session.required": "true",
+    "backchannel.logout.revoke.offline.tokens": "false"
+  },
+  "authenticationFlowBindingOverrides": {},
+  "defaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "email",
+    "roles",
+    "openid",
+    "actor-type-human"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ],
+  "redirectUris": [
+    "http://localhost:3003/*"
+  ],
+  "webOrigins": [
+    "http://localhost:3003"
+  ]
+}
