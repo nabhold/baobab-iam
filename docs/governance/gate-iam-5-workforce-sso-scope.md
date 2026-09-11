@@ -1,6 +1,6 @@
 # Gate IAM-5 — Workforce SSO
 
-**Status:** Phase 1 complete (this PR). Phases 2+ (real per-app OIDC wiring, admin role model in `baobab-cp`, MFA/step-up, lifecycle, audit) are scoped below but not yet implemented — see §5.
+**Status:** Phase 1 complete. Phase 2a (`baobab-trade` OIDC wiring) complete — `nabhold/baobab-trade#70`. Phase 2b (`baobab-cms` OIDC wiring) explicitly deferred by decision, not merely unstarted — see §5.1. Remaining phases (admin role model in `baobab-cp`, MFA/step-up, lifecycle, audit) are scoped below but not yet implemented — see §5.
 **Date:** 2026-09-11
 **Governing ADR:** `ADR-0009 — Workforce SSO and Privileged Access`
 **Repositories:** `nabhold/baobab-iam` (workforce SSO clients, owner), `nabhold/baobab-cp` (canonical identity, CP administration), `nabhold/baobab-cms`, `nabhold/baobab-trade`, `nabhold/baobab-erp`, `nabhold/baobab-pulse` (engine admin surfaces)
@@ -67,7 +67,14 @@ The `baobab-cp` defect in §1/§2.3 is worth stating plainly because it's easy t
 
 ## 5. Remaining phases (scoped, not yet implemented)
 
-2. **`baobab-cms`/`baobab-trade` — real OIDC wiring.** CMS: add a Payload `auth.strategies` OIDC strategy pointed at `baobab-cms-admin`, mapping the resulting claims onto `Users`' existing `canonicalActorId`/`platformAdministrator` fields per the repo's own anticipated integration point. Trade: enable Medusa's bundled `@medusajs/auth-oidc` provider in `medusa-config.ts` pointed at `baobab-trade-admin` — no bespoke client code required, only configuration. Each is its own bounded PR in its own repo.
+2a. ~~**`baobab-trade` — real OIDC wiring.**~~ **Done — `nabhold/baobab-trade#70`.** Enabled Medusa's bundled `@medusajs/auth-oidc` provider in `medusa-config.ts` pointed at `baobab-trade-admin` — no bespoke client code, only configuration (registering `@medusajs/medusa/auth` explicitly, with `emailpass` kept alongside the new conditional `oidc` entry so nothing regresses when `BAOBAB_IAM_OIDC_ISSUER` is unset). `npm run format:check`/`lint`/`typecheck`/`test`/`build` all green, `build` exercised in both the SSO-enabled and SSO-disabled configurations.
+
+### 5.1 `baobab-cms` — real OIDC wiring, deferred by decision
+
+Unlike Trade, Payload CMS has no official or community OIDC auth-provider plugin (checked directly against the npm registry — nothing matching `payload`+`oidc`/`sso`/`keycloak` exists as of 2026-09-11). Wiring SSO here means writing a custom `auth.strategies` implementation from scratch using `openid-client` (the same underlying library Medusa's own official module uses) — authorization-redirect construction, PKCE/state/nonce handling, token exchange, ID-token verification, and session issuance, mapped onto `Users`' existing `canonicalActorId`/`platformAdministrator` fields per the repo's own anticipated integration point (`docs/identity/README.md`).
+
+This is qualitatively different from phase 2a: net-new security-critical authentication code, not configuration of an already-audited module. Given that risk profile, the decision (2026-09-11, explicit check-in) was to **defer this to its own dedicated phase** rather than build it in the same pass as the rest of Gate IAM-5's lower-risk work, so it can get focused design/security attention (state/PKCE correctness, redirect-URI validation, token verification) rather than being rushed alongside phase 1/2a. Not started; no code exists yet in `baobab-cms` for this.
+
 3. **`baobab-cp` — role-aware admin authorization.** Map the new `cp:platform-admin`/`cp:tenant-admin` realm roles (carried in a human token's `roles` claim once phase 2-adjacent CP-console work exists) onto `router.go`'s admin routes, rather than the current flat per-scope gating alone — giving ADR-0009 §14-16's privilege-segregation model actual teeth in `baobab-cp`, not just IAM-side vocabulary.
 4. **Workforce membership model in `baobab-cp`** (§27-28) — the `CanonicalIdentity → WorkforceMembership → {LegalEntity, Tenant, status}` relationship ADR-0009 needs for joiner/mover/leaver (§29-36) and executive cross-tenant access (§24-26) to be real rather than conceptual.
 5. **MFA/step-up** — ADR-0015, Gate IAM-11; explicitly out of this gate per ADR-0009's own text.
