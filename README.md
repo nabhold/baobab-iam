@@ -15,12 +15,14 @@
   Gate IAM-4 (workload identity, ADR-0007) are **complete** — see
   [Gate IAM-3 scope](./docs/governance/gate-iam-3-canonical-identity-scope.md) and
   [Gate IAM-4 scope](./docs/governance/gate-iam-4-workload-identity-scope.md). Gate IAM-5
-  (workforce SSO, ADR-0009) phase 1 is complete (distinct workforce admin clients, a starter
-  role namespace, and a real `baobab-cp` admin-authorization defect fixed) — see
-  [Gate IAM-5 scope](./docs/governance/gate-iam-5-workforce-sso-scope.md) for phases 2+.
+  (workforce SSO, ADR-0009) phase 1 (distinct workforce admin clients, a starter role
+  namespace, a real `baobab-cp` admin-authorization defect fixed) and phase 2a
+  (`baobab-trade` OIDC wiring, `nabhold/baobab-trade#70`) are complete. Phase 2b
+  (`baobab-cms` OIDC wiring) is explicitly deferred to its own phase — see
+  [Gate IAM-5 scope](./docs/governance/gate-iam-5-workforce-sso-scope.md) §5.1.
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline) and Gate
-  IAM-5's remaining phases (real OIDC wiring in `baobab-cms`/`baobab-trade`, `baobab-cp`
-  role-aware admin authorization), then Gates IAM-6 through IAM-16 now that the identity
+  IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
+  authorization), then Gates IAM-6 through IAM-16 now that the identity
   spine underneath them is sound.
 
 ---
