@@ -10,6 +10,13 @@
 #   KC_URL                             (default: http://localhost:8080)
 #   KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD (default: admin / admin123)
 #   BOOTSTRAP_WORKLOAD_CLIENT_SECRET   the same value bootstrap.sh was run with
+#
+# Section 9 also fetches nabhold/shared's workload-registry.yaml (pinned in
+# contracts.lock.yaml) over the network and needs yq in addition to
+# curl/jq/bash -- this happens here, not in scripts/bootstrap.sh, because
+# the Keycloak container bootstrap.sh runs in deliberately has neither curl
+# nor yq (see Dockerfile's tools-build stage comment: curl was removed for
+# unfixed ubi9 CVEs, and nothing else in the image needed it back).
 set -euo pipefail
 
 KC_URL=${KC_URL:-http://localhost:8080}
@@ -198,6 +205,87 @@ fi
 curl -sf --max-time 30 -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
   "$KC_URL/admin/realms/$REALM/clients/$ERP_CLIENT_UUID" \
   -d '{"enabled": true}' > /dev/null
+
+echo "== 9. Workload registry consistency (ADR-0007 §42-44) =="
+LOCK_SHA=$(yq -o=json '.' contracts.lock.yaml | jq -r '.contracts[0].sha')
+REGISTRY_YAML=$(curl -sf --max-time 30 "https://raw.githubusercontent.com/nabhold/shared/$LOCK_SHA/contracts/identity/v1/workload-registry.yaml" || echo "")
+if [ -z "$REGISTRY_YAML" ]; then
+  fail "could not fetch nabhold/shared's workload-registry.yaml at pinned commit $LOCK_SHA (contracts.lock.yaml)"
+else
+  REGISTRY_JSON=$(echo "$REGISTRY_YAML" | yq -o=json '.')
+  REGISTRY_IDS=$(echo "$REGISTRY_JSON" | jq -r '.workloads | keys[]')
+  # config/clients/*-workload.json's *filenames* all end in "-workload", but
+  # the clientId inside doesn't always (thamani-backend/zuribeans-backend
+  # never had the clientId collision the other four did -- see
+  # gate-iam-0-discovery.md §4.9 -- so they were never renamed to match
+  # their filename). Look up by clientId content below, never by filename.
+  LOCAL_CLIENT_IDS=""
+  DRIFT=0
+  for CLIENT_FILE in config/clients/*-workload.json; do
+    CLIENT_ID=$(jq -r '.clientId' "$CLIENT_FILE")
+    LOCAL_CLIENT_IDS=$(printf '%s\n%s' "$LOCAL_CLIENT_IDS" "$CLIENT_ID")
+    if ! echo "$REGISTRY_IDS" | grep -qx "$CLIENT_ID"; then
+      fail "workload client '$CLIENT_ID' ($CLIENT_FILE) is not registered in nabhold/shared's workload registry (ADR-0007 §44: an orphaned IAM client is a security defect)"
+      DRIFT=1
+      continue
+    fi
+    ALLOWED_SCOPES=$(echo "$REGISTRY_JSON" | jq -r --arg id "$CLIENT_ID" '.workloads[$id].allowed_scopes[]')
+    # Only the ADR-0007-specific custom scope is checked against the
+    # registry's allowlist -- built-in Keycloak default scopes (openid,
+    # profile, roles, ...) aren't part of what this registry governs.
+    for SCOPE in $(jq -r '.defaultClientScopes[] | select(. == "context:resolve")' "$CLIENT_FILE"); do
+      if ! echo "$ALLOWED_SCOPES" | grep -qx "$SCOPE"; then
+        fail "workload client '$CLIENT_ID' grants scope '$SCOPE', which is not in its workload-registry.yaml allowed_scopes"
+        DRIFT=1
+      fi
+    done
+  done
+  if [ "$DRIFT" -eq 0 ]; then
+    pass "every config/clients/*-workload.json client is registered, with scopes within its registry allowlist"
+  fi
+  ACTIVE_WITHOUT_CLIENT=0
+  for ID in $(echo "$REGISTRY_JSON" | jq -r '.workloads | to_entries[] | select(.value.status == "ACTIVE") | .key'); do
+    if ! echo "$LOCAL_CLIENT_IDS" | grep -qx "$ID"; then
+      fail "workload registry lists ACTIVE workload '$ID' but no config/clients/*.json declares that clientId"
+      ACTIVE_WITHOUT_CLIENT=1
+    fi
+  done
+  if [ "$ACTIVE_WITHOUT_CLIENT" -eq 0 ]; then
+    pass "every ACTIVE workload in the registry has a matching config/clients/*.json clientId"
+  fi
+fi
+
+echo "== 10. Cross-workload identity isolation (ADR-0007 §102 impersonation checks) =="
+PULSE_TOKEN_RESPONSE=$(curl -s --max-time 30 -X POST "$TOKEN_ENDPOINT" \
+  -d "client_id=baobab-pulse-workload" \
+  -d "client_secret=$WORKLOAD_SECRET" \
+  -d "grant_type=client_credentials")
+PULSE_ACCESS_TOKEN=$(echo "$PULSE_TOKEN_RESPONSE" | jq -r '.access_token // empty')
+if [ -n "$PULSE_ACCESS_TOKEN" ] && [ -n "${ACCESS_TOKEN:-}" ]; then
+  PULSE_PAYLOAD=$(jwt_payload "$PULSE_ACCESS_TOKEN")
+  TRADE_AZP=$(echo "$PAYLOAD" | jq -r '.azp // empty')
+  PULSE_AZP=$(echo "$PULSE_PAYLOAD" | jq -r '.azp // empty')
+  TRADE_SUB=$(echo "$PAYLOAD" | jq -r '.sub // empty')
+  PULSE_SUB=$(echo "$PULSE_PAYLOAD" | jq -r '.sub // empty')
+  if [ "$TRADE_AZP" = "baobab-trade-workload" ] && [ "$PULSE_AZP" = "baobab-pulse-workload" ]; then
+    pass "each workload's token carries its own azp (no cross-workload identity leakage)"
+  else
+    fail "azp does not exclusively identify its own client (trade azp='$TRADE_AZP', pulse azp='$PULSE_AZP')"
+  fi
+  if [ -n "$TRADE_SUB" ] && [ "$TRADE_SUB" != "$PULSE_SUB" ]; then
+    pass "baobab-trade-workload and baobab-pulse-workload resolve to distinct subjects"
+  else
+    fail "baobab-trade-workload and baobab-pulse-workload unexpectedly share a subject ('$TRADE_SUB'), which would let one impersonate the other"
+  fi
+else
+  fail "could not obtain both trade and pulse workload tokens for the cross-workload isolation check"
+fi
+# ADR-0007 §102's "development credential rejected in production" isolation
+# case is NOT covered above: this realm has no environment-separated
+# workload clients yet (every workload-registry.yaml entry is
+# environment: production) -- that's Gate IAM-2's environment-separation
+# work (see README.md's Status section), not something Gate IAM-4 can test
+# against real infrastructure until it exists.
 
 echo ""
 echo "== Summary: $PASS passed, $FAIL failed =="

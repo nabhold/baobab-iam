@@ -2,7 +2,10 @@
 version: 1
 contracts:
   - source: nabhold/shared
-    tag: v1.2.0
-    # Peeled commit for the v1.2.0 annotated tag, verified via
-    # `git ls-remote --tags https://github.com/nabhold/shared` on 2026-09-10.
-    sha: 38defb11aacd95a6f68b7db8026fe336417a2af6
+    # No tag covers this commit yet (newest tag is v1.3.0, SHA
+    # c0b1dfcb5049f4e994e926a6f1ea9ff2b4a02b6c) -- bumped past it to pick up
+    # contracts/identity/v1/workload-registry.yaml, added by
+    # nabhold/shared#31 (squash-merged directly to main as this commit) and
+    # consumed by tests/integration/run.sh's workload-registry-consistency
+    # check (ADR-0007 §42-44, Gate IAM-4 phase 3).
+    sha: dc09a3e790708efbc06e3d32c15f61cb06746f99
