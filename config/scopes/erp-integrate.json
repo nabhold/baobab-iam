@@ -1,0 +1,22 @@
+{
+  "name": "erp:integrate",
+  "description": "Grants permission to call baobab-erp's /context/resolve* and /mapping/resolve* boundary. Carries the aud=baobab-erp mapper, distinct from context:resolve's aud=baobab-control-plane (ADR-0014 §111, ADR-0007 §§24-25).",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "true",
+    "display.on.consent.screen": "false"
+  },
+  "protocolMappers": [
+    {
+      "name": "audience-baobab-erp",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.custom.audience": "baobab-erp",
+        "id.token.claim": "false",
+        "access.token.claim": "true"
+      }
+    }
+  ]
+}

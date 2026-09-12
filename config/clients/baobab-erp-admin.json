@@ -1,0 +1,40 @@
+{
+  "clientId": "baobab-erp-admin",
+  "name": "Baobab ERP — Workforce Administration",
+  "description": "Gate IAM-10 (ADR-0014 §6-9): workforce SSO client for iDempiere's built-in OIDC plugin. Confidential, distinct from the bearer-only baobab-erp client. No PKCE: iDempiere's plugin never sends a code_challenge (verified against its source).",
+  "enabled": true,
+  "publicClient": false,
+  "bearerOnly": false,
+  "serviceAccountsEnabled": false,
+  "protocol": "openid-connect",
+  "directAccessGrantsEnabled": false,
+  "implicitFlowEnabled": false,
+  "standardFlowEnabled": true,
+  "attributes": {
+    "oauth2.device.authorization.grant.enabled": "false",
+    "backchannel.logout.session.required": "true",
+    "backchannel.logout.revoke.offline.tokens": "false"
+  },
+  "authenticationFlowBindingOverrides": {},
+  "defaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "email",
+    "roles",
+    "openid",
+    "actor-type-human"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ],
+  "redirectUris": [
+    "https://localhost:8443/webui/*"
+  ],
+  "webOrigins": [
+    "https://localhost:8443"
+  ]
+}

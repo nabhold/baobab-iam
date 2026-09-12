@@ -36,12 +36,21 @@
   IAM-5's admin OIDC wiring, plus one real gap fixed — `authMethodsPerActor` was unset,
   making the admin `oidc` provider also implicitly reachable by the customer actor
   (`nabhold/baobab-trade#71`) — see
-  [Gate IAM-9 scope](./docs/governance/gate-iam-9-medusa-integration-scope.md).
+  [Gate IAM-9 scope](./docs/governance/gate-iam-9-medusa-integration-scope.md). Gate IAM-10
+  (ERP Integration, ADR-0014) found iDempiere 13 ships a real, pluggable, built-in OIDC
+  mechanism (`org.idempiere.ui.sso.oidc`) — a workforce SSO client (`baobab-erp-admin`) is
+  provisioned for it, and `baobab-erp`'s previously-unauthenticated
+  `/context/resolve*`/`/mapping/resolve*` endpoints now validate workload tokens. Ships
+  against one explicit, documented deviation from ADR-0014 §9 (the stock plugin matches by
+  email/username, not `issuer+subject`) — see
+  [Gate IAM-10 scope](./docs/governance/gate-iam-10-erp-integration-scope.md) §2.
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
   authorization), Gate IAM-6's remaining phases, the shared Gate IAM-7/IAM-9
-  customer-OIDC-termination decision, and Gate IAM-8's supplier-domain ownership decision,
-  then Gates IAM-10 through IAM-16 now that the identity spine underneath them is sound.
+  customer-OIDC-termination decision, Gate IAM-8's supplier-domain ownership decision, and
+  Gate IAM-10's remaining phases (closing its ADR-0014 §9 deviation, AD_User/Role/Client/Org
+  provisioning), then Gates IAM-11 through IAM-16 now that the identity spine underneath
+  them is sound.
 
 ---
 
