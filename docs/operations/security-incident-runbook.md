@@ -34,15 +34,17 @@ domain engine's incident response, not `baobab-iam`'s).
 
 This is Gate IAM-12's "kill switch" (`tests/integration/run.sh` §16), used for real:
 
-1. **Revoke sessions immediately** — `POST /admin/realms/baobab/users/{id}/logout`. Ends every
-   active session for that identity right away, independent of whether the credential itself
-   has been rotated yet.
-2. **Disable the identity** — `PUT /admin/realms/baobab/users/{id}` with `{"enabled": false}`.
-   Per ADR-0016 §211 ("DISABLED identity + valid token = DENY" from the IAM side), this
-   prevents any *new* authentication; it does not itself invalidate an already-issued,
-   still-valid access token still being accepted downstream — the affected engine(s) enforce
-   that from their own side (short-lived-token expiry, or their own revocation-check against
-   IAM).
+1. **Disable the identity first** — `PUT /admin/realms/baobab/users/{id}` with
+   `{"enabled": false}`. This order matters: if sessions were revoked first while the identity
+   stays enabled, an attacker still holding the compromised password can simply log in again
+   before the next step completes, obtaining a fresh session and access token. Disabling first
+   closes that window — per ADR-0016 §211 ("DISABLED identity + valid token = DENY" from the
+   IAM side), this prevents any *new* authentication; it does not itself invalidate an
+   already-issued, still-valid access token still being accepted downstream — the affected
+   engine(s) enforce that from their own side (short-lived-token expiry, or their own
+   revocation-check against IAM).
+2. **Then revoke sessions** — `POST /admin/realms/baobab/users/{id}/logout`. Ends every active
+   session for that identity now that no new one can replace it.
 3. **Delete the compromised credential** — `DELETE
    /admin/realms/baobab/users/{id}/credentials/{credentialId}` (find the credential ID via
    `GET /admin/realms/baobab/users/{id}/credentials`, filtering `type == "password"`). Gate
@@ -66,10 +68,17 @@ This is Gate IAM-12's "kill switch" (`tests/integration/run.sh` §16), used for 
    independently revokes only that client's ability to obtain tokens — other workload clients
    are unaffected (ADR-0007's independent-revocation requirement).
 2. **Rotate the secret** — follow
-   [`client-secret-rotation.md`](./client-secret-rotation.md).
-3. **Re-enable** once the affected system(s) have the new secret deployed.
-4. **Audit** — the same `admin-events` query as step 5 above, scoped to `resourceTypes=CLIENT`.
-5. **Check for tokens already issued** with the compromised secret before it was disabled —
+   [`client-secret-rotation.md`](./client-secret-rotation.md) steps 1-4 (capture the old
+   secret, generate and set a new one, deploy it to the workload). **Do not run that
+   document's step 5 (verification) yet** — the client is still disabled, so every check in
+   it would fail regardless of whether rotation actually worked.
+3. **Re-enable** once the affected system(s) have the new secret deployed — `PUT
+   /admin/realms/baobab/clients/{uuid}` with `{"enabled": true}`.
+4. **Now run `client-secret-rotation.md`'s step 5** (verify the new secret works and the old
+   one is rejected) — this only produces a meaningful result once the client is enabled again.
+5. **Audit** — the same `admin-events` query as step 5 in §2 above, scoped to
+   `resourceTypes=CLIENT`.
+6. **Check for tokens already issued** with the compromised secret before it was disabled —
    these remain valid until natural expiry (`accessTokenLifespan: 900` seconds, per
    `config/realm/baobab-realm.json`); the consuming resource server (`baobab-cp`, an engine)
    is responsible for its own short-lived-token exposure window, matching ADR-0018 §92's
