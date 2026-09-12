@@ -454,6 +454,55 @@ else
   fail "could not obtain a baobab-erp-workload token with the erp:integrate scope"
 fi
 
+echo "== 15. Credential security and privileged MFA (Gate IAM-11, ADR-0015 §11-14, §21-25, §45) =="
+REALM_JSON=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" "$KC_URL/admin/realms/$REALM")
+REALM_PASSWORD_POLICY=$(echo "$REALM_JSON" | jq -r '.passwordPolicy')
+if [[ "$REALM_PASSWORD_POLICY" == *"length(15)"* ]] && [[ "$REALM_PASSWORD_POLICY" != *"upperCase"* ]] && [[ "$REALM_PASSWORD_POLICY" != *"lowerCase"* ]] && [[ "$REALM_PASSWORD_POLICY" != *"digits"* ]]; then
+  pass "password policy meets ADR-0015 §11-12 (length >= 15) without §14's prohibited composition rules"
+else
+  fail "password policy does not match ADR-0015 §11-14 (got '$REALM_PASSWORD_POLICY')"
+fi
+REALM_BROWSER_FLOW=$(echo "$REALM_JSON" | jq -r '.browserFlow')
+if [ "$REALM_BROWSER_FLOW" = "Baobab browser" ]; then
+  pass "realm's browserFlow is the custom 'Baobab browser' flow"
+else
+  fail "realm's browserFlow is '$REALM_BROWSER_FLOW', expected 'Baobab browser'"
+fi
+MFA_ROLE_JSON=$(curl -s --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" "$KC_URL/admin/realms/$REALM/roles/iam:mfa-required")
+if [ "$(echo "$MFA_ROLE_JSON" | jq -r '.name // empty')" = "iam:mfa-required" ]; then
+  pass "marker role 'iam:mfa-required' is provisioned"
+else
+  fail "marker role 'iam:mfa-required' is not provisioned"
+fi
+for ROLE in "iam:security-admin" "iam:helpdesk" "cp:platform-admin" "cp:tenant-admin" "trade:operator" "cms:editor" "cms:publisher"; do
+  COMPOSITE_NAMES=$(curl -s --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/roles/$ROLE/composites" | jq -r '[.[].name] | join(",")')
+  if [[ "$COMPOSITE_NAMES" == *"iam:mfa-required"* ]]; then
+    pass "'$ROLE' composites in iam:mfa-required (privileged access requires MFA, ADR-0015 §24,§45)"
+  else
+    fail "'$ROLE' does not composite iam:mfa-required (composites: $COMPOSITE_NAMES)"
+  fi
+done
+BROWSER_FLOW_EXECUTIONS=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/authentication/flows/Baobab%20browser/executions")
+if echo "$BROWSER_FLOW_EXECUTIONS" | jq -e '[.[].displayName] | any(. == "Baobab - Privileged MFA")' > /dev/null; then
+  pass "'Baobab browser' flow's executions include the 'Baobab - Privileged MFA' conditional subflow"
+else
+  fail "'Baobab browser' flow's executions do not include 'Baobab - Privileged MFA' (got: $(echo "$BROWSER_FLOW_EXECUTIONS" | jq -c '[.[].displayName]'))"
+fi
+if echo "$BROWSER_FLOW_EXECUTIONS" | jq -e '[.[].displayName] | any(. == "Condition - user role")' > /dev/null \
+   && echo "$BROWSER_FLOW_EXECUTIONS" | jq -e '[.[].displayName] | any(. == "OTP Form")' > /dev/null; then
+  pass "the privileged-MFA subflow contains both the role condition and an OTP form requirement"
+else
+  fail "the privileged-MFA subflow is missing its role-condition or OTP-form execution (got: $(echo "$BROWSER_FLOW_EXECUTIONS" | jq -c '[.[].displayName]'))"
+fi
+# What this suite cannot verify: an actual browser-redirect login being
+# challenged for OTP end-to-end. That needs a headless browser driving the
+# real login UI, which this repo's CI has no tooling for (every workforce
+# admin client has directAccessGrantsEnabled=false, so there is no
+# token-endpoint shortcut that exercises browserFlow at all -- see
+# docs/governance/gate-iam-11-credential-security-scope.md).
+
 echo ""
 echo "== Summary: $PASS passed, $FAIL failed =="
 if [ "$FAIL" -gt 0 ]; then
