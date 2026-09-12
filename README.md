@@ -31,12 +31,17 @@
   (Supplier Identity, ADR-0012) is **scoped, not yet implemented** — discovery found no
   repository anywhere owns "supplier domain" logic yet (a bigger blocker than Gate IAM-7's
   forks), so implementation is deferred pending that ownership decision — see
-  [Gate IAM-8 scope](./docs/governance/gate-iam-8-supplier-identity-scope.md) §3.
+  [Gate IAM-8 scope](./docs/governance/gate-iam-8-supplier-identity-scope.md) §3. Gate
+  IAM-9 (Medusa Integration, ADR-0013) found most of its scope already satisfied by Gate
+  IAM-5's admin OIDC wiring, plus one real gap fixed — `authMethodsPerActor` was unset,
+  making the admin `oidc` provider also implicitly reachable by the customer actor
+  (`nabhold/baobab-trade#71`) — see
+  [Gate IAM-9 scope](./docs/governance/gate-iam-9-medusa-integration-scope.md).
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
-  authorization), Gate IAM-6's remaining phases, Gate IAM-7's two open decisions, and Gate
-  IAM-8's supplier-domain ownership decision, then Gates IAM-9 through IAM-16 now that the
-  identity spine underneath them is sound.
+  authorization), Gate IAM-6's remaining phases, the shared Gate IAM-7/IAM-9
+  customer-OIDC-termination decision, and Gate IAM-8's supplier-domain ownership decision,
+  then Gates IAM-10 through IAM-16 now that the identity spine underneath them is sound.
 
 ---
 
