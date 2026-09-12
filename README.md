@@ -17,9 +17,12 @@
   [Gate IAM-3 scope](./docs/governance/gate-iam-3-canonical-identity-scope.md) and
   [Gate IAM-4 scope](./docs/governance/gate-iam-4-workload-identity-scope.md). Gate IAM-5
   (workforce SSO, ADR-0009) phase 1 (distinct workforce admin clients, a starter role
-  namespace, a real `baobab-cp` admin-authorization defect fixed) and phase 2a
-  (`baobab-trade` OIDC wiring, `nabhold/baobab-trade#70`) are complete. Phase 2b
-  (`baobab-cms` OIDC wiring) is explicitly deferred to its own phase — see
+  namespace, a real `baobab-cp` admin-authorization defect fixed), phase 2a
+  (`baobab-trade` OIDC wiring, `nabhold/baobab-trade#70`), and phase 2b (`baobab-cms` OIDC
+  wiring, `nabhold/baobab-cms#9` — real PKCE/state/nonce/ID-token verification against
+  `openid-client`, since Payload ships no OIDC plugin; two review-caught bugs, a missing
+  password on JIT provisioning and a missing database migration, were fixed and verified
+  against a real local Postgres instance before merge) are all complete — see
   [Gate IAM-5 scope](./docs/governance/gate-iam-5-workforce-sso-scope.md) §5.1. Gate IAM-6
   (Zuribeans B2B, ADR-0010) phase 1 (Keycloak Organizations enabled, verified end-to-end
   against a real Keycloak instance) is complete — see
@@ -94,7 +97,8 @@
 - **Next:** All sixteen numbered gates (IAM-0 through IAM-16) have now had at least a phase 1
   pass. What remains is every gate's own deferred work, none of it resolved by reaching
   IAM-16: Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate IAM-5's
-  remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin authorization),
+  remaining phases (now that both engine OIDC wirings are done: `baobab-cp` role-aware admin
+  authorization, the workforce membership model, MFA/step-up, break-glass/access review),
   Gate IAM-6's remaining phases (including cross-buyer isolation testing), the shared Gate
   IAM-7/IAM-9 customer-OIDC-termination decision, Gate IAM-8's supplier-domain ownership
   decision, Gate IAM-10's remaining phases (closing its ADR-0014 §9 deviation,
