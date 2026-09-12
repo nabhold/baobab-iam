@@ -70,7 +70,16 @@
   never checked by the old hardcoded client list); R-1 (image digest) is re-confirmed still
   blocked on `quay.io` egress, and a new, unrelated defect (`loginTheme`/`accountTheme:
   "baobab"` references a theme that was never built) was found and deliberately left open —
-  see [Gate IAM-14 scope](./docs/governance/gate-iam-14-availability-dr-scope.md) §5, §7.
+  see [Gate IAM-14 scope](./docs/governance/gate-iam-14-availability-dr-scope.md) §5, §7. Gate
+  IAM-15 (Multi-Region Readiness) required no `baobab-iam` code changes — discovery found
+  `baobab-cp` already implements the region/market/`CapabilityBinding`/`EngineInstance` model
+  this gate's checklist describes (including real residency-mismatch enforcement in its
+  topology resolver), the IAM/CP boundary needs no region claim, and this repo's current
+  single-global-realm architecture is the correct Phase A per the Consolidated Spec's own
+  multi-region evolution model. One item does NOT get a clean bill of health: the "revoked
+  account survives DR restore" row from the spec's Multi-Region Test Matrix is real but not
+  yet proven end-to-end (no actual backup/restore/reconciliation exercise exists) — see
+  [Gate IAM-15 scope](./docs/governance/gate-iam-15-multi-region-readiness-scope.md) §5, §7.
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
   authorization), Gate IAM-6's remaining phases, the shared Gate IAM-7/IAM-9
@@ -78,10 +87,11 @@
   IAM-10's remaining phases (closing its ADR-0014 §9 deviation, AD_User/Role/Client/Org
   provisioning), Gate IAM-11's remaining phases, Gate IAM-12's open architectural fork
   (whether IAM needs a custom Keycloak event-listener SPI or `baobab-cp` should poll its
-  native Admin Events API), Gate IAM-13's deferred retention-policy decision, and Gate
-  IAM-14's real remaining gaps (the missing `baobab` theme, a post-backup security journal,
-  and R-1), then Gates IAM-15 and IAM-16 now that the identity spine underneath them is
-  sound.
+  native Admin Events API), Gate IAM-13's deferred retention-policy decision, Gate IAM-14's
+  real remaining gaps (the missing `baobab` theme, a post-backup security journal, and R-1),
+  and Gate IAM-15's deferred multi-region phases B-D (all `nabhold/infrastructure`'s, not
+  attempted before Phase A is solid per the spec's own recommendation), then Gate IAM-16
+  (Production Hardening) to close out the gate program.
 
 ---
 
