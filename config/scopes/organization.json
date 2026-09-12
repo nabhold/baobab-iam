@@ -1,0 +1,26 @@
+{
+  "name": "organization",
+  "description": "Additional claims about the organization a subject belongs to",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "true",
+    "display.on.consent.screen": "true",
+    "consent.screen.text": "${organizationScopeConsentText}"
+  },
+  "protocolMappers": [
+    {
+      "name": "organization",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-organization-membership-mapper",
+      "consentRequired": false,
+      "config": {
+        "introspection.token.claim": "true",
+        "multivalued": "true",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "organization",
+        "jsonType.label": "String"
+      }
+    }
+  ]
+}

@@ -345,6 +345,53 @@ else
   fail "a workforce admin role is unexpectedly part of default-roles-$REALM: $DEFAULT_REALM_ROLE_NAMES"
 fi
 
+echo "== 13. Zuribeans B2B: Organizations feature (Gate IAM-6, ADR-0010 §5-9) =="
+REALM_ORG_ENABLED=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM" | jq -r '.organizationsEnabled')
+if [ "$REALM_ORG_ENABLED" = "true" ]; then
+  pass "realm '$REALM' has the Organizations feature enabled (organizationsEnabled=true)"
+else
+  fail "realm '$REALM' does not have organizationsEnabled=true (got '$REALM_ORG_ENABLED')"
+fi
+ORG_SCOPE_JSON=$(curl -s --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/client-scopes" | jq '[.[] | select(.name == "organization")][0]')
+ORG_SCOPE_MAPPER=$(echo "$ORG_SCOPE_JSON" | jq -r '.protocolMappers[0].protocolMapper // empty')
+if [ "$ORG_SCOPE_MAPPER" = "oidc-organization-membership-mapper" ]; then
+  pass "the 'organization' client scope exists with Keycloak's organization-membership mapper"
+else
+  fail "the 'organization' client scope is missing or lacks the organization-membership mapper (found '$ORG_SCOPE_MAPPER')"
+fi
+ZURIBEANS_OPTIONAL_SCOPES=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/clients?clientId=zuribeans-web" | jq -r '.[0].optionalClientScopes | join(",")')
+if [[ "$ZURIBEANS_OPTIONAL_SCOPES" == *"organization"* ]]; then
+  pass "zuribeans-web can request the 'organization' scope (ADR-0010 §35 explicit buyer-context selection)"
+else
+  fail "zuribeans-web is missing the 'organization' optional scope (scopes: $ZURIBEANS_OPTIONAL_SCOPES)"
+fi
+# End-to-end smoke test: the feature is not just configured but functional
+# against a real Keycloak instance. Idempotent: the test organization is
+# deleted at the end regardless of outcome so re-runs don't accumulate state
+# or collide on the unique alias.
+ORG_ALIAS="gate-iam-6-smoketest"
+curl -s --max-time 30 -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/organizations/$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" "$KC_URL/admin/realms/$REALM/organizations?search=$ORG_ALIAS&exact=true" | jq -r '.[0].id // empty')" > /dev/null 2>&1 || true
+ORG_CREATE_RESPONSE=$(curl -s --max-time 30 -o /tmp/org-create-response.txt -w "%{http_code}" -X POST \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  "$KC_URL/admin/realms/$REALM/organizations" \
+  -d "{\"name\":\"Gate IAM-6 Smoke Test\",\"alias\":\"$ORG_ALIAS\",\"domains\":[{\"name\":\"gate-iam-6-smoketest.example.invalid\"}]}")
+if [ "$ORG_CREATE_RESPONSE" = "201" ]; then
+  pass "creating a real Organization via the Admin API succeeds end-to-end"
+else
+  fail "creating a real Organization via the Admin API failed (HTTP $ORG_CREATE_RESPONSE): $(cat /tmp/org-create-response.txt)"
+fi
+ORG_ID=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/organizations?search=$ORG_ALIAS&exact=true" | jq -r '.[0].id // empty')
+if [ -n "$ORG_ID" ]; then
+  curl -s --max-time 30 -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/organizations/$ORG_ID" > /dev/null
+fi
+rm -f /tmp/org-create-response.txt
+
 echo ""
 echo "== Summary: $PASS passed, $FAIL failed =="
 if [ "$FAIL" -gt 0 ]; then
