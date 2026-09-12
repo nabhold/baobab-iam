@@ -61,7 +61,7 @@
       },
       {
         "name": "iam:mfa-required",
-        "description": "Gate IAM-11 (ADR-0015 §24,§45): marker role, not assigned directly. Every existing workforce admin role composites it in, so the browser flow's conditional-user-role check (config/realm's 'Baobab - Privileged MFA' subflow) catches all of them without one condition per role."
+        "description": "Gate IAM-11 (ADR-0015 §24): marker role, not assigned directly. Every workforce admin role composites it in for the browser flow's MFA condition."
       }
     ]
   },
@@ -155,7 +155,7 @@
   "authenticationFlows": [
     {
       "alias": "Baobab browser",
-      "description": "Gate IAM-11 (ADR-0015 §24,§45): a copy of Keycloak's built-in 'browser' flow with one addition -- a conditional MFA subflow gated on the iam:mfa-required marker role, which every existing workforce admin role composites in (see config/realm's roles.realm list). Not built-in, so it is safe for this repo to own and evolve.",
+      "description": "Gate IAM-11 (ADR-0015 §24): copy of Keycloak's built-in 'browser' flow, plus a conditional MFA subflow gated on the iam:mfa-required role.",
       "providerId": "basic-flow",
       "topLevel": true,
       "builtIn": false,
@@ -208,7 +208,7 @@
     },
     {
       "alias": "Baobab - Privileged MFA",
-      "description": "Gate IAM-11 (ADR-0015 §24 'Privileged interactive access SHALL require MFA'): requires OTP only for users holding iam:mfa-required (directly or via composite role), leaving standard/enhanced-risk users at single-factor per the ADR's risk-based §21-23 tiers.",
+      "description": "Gate IAM-11 (ADR-0015 §24): requires OTP only for users holding iam:mfa-required (directly or via composite role).",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
