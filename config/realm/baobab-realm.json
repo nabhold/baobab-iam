@@ -19,36 +19,54 @@
     "realm": [
       {
         "name": "iam:security-admin",
-        "description": "Gate IAM-5 (ADR-0009 §15,§61,§102-103): IAM/Keycloak security administration. Distinct from iam:helpdesk; grants no privilege in other domains (§14)."
+        "description": "Gate IAM-5 (ADR-0009 §15,§61,§102-103): IAM/Keycloak security administration. Distinct from iam:helpdesk; grants no privilege in other domains (§14).",
+        "composite": true,
+        "composites": { "realm": ["iam:mfa-required"] }
       },
       {
         "name": "iam:helpdesk",
-        "description": "Gate IAM-5 (ADR-0009 §61-62,§102): user lookup and approved recovery assistance. Does not imply iam:security-admin (§61)."
+        "description": "Gate IAM-5 (ADR-0009 §61-62,§102): user lookup and approved recovery assistance. Does not imply iam:security-admin (§61).",
+        "composite": true,
+        "composites": { "realm": ["iam:mfa-required"] }
       },
       {
         "name": "cp:platform-admin",
-        "description": "Gate IAM-5 (ADR-0009 §16,§103): baobab-cp platform administration (tenants, capabilities, canonical mappings). No authority in IAM/ERP/Trade/CMS (§14)."
+        "description": "Gate IAM-5 (ADR-0009 §16,§103): baobab-cp platform administration (tenants, capabilities, canonical mappings). No authority in IAM/ERP/Trade/CMS (§14).",
+        "composite": true,
+        "composites": { "realm": ["iam:mfa-required"] }
       },
       {
         "name": "cp:tenant-admin",
-        "description": "Gate IAM-5 (ADR-0009 §102): tenant-scoped baobab-cp administration, narrower than cp:platform-admin."
+        "description": "Gate IAM-5 (ADR-0009 §102): tenant-scoped baobab-cp administration, narrower than cp:platform-admin.",
+        "composite": true,
+        "composites": { "realm": ["iam:mfa-required"] }
       },
       {
         "name": "trade:operator",
-        "description": "Gate IAM-5 (ADR-0009 §17,§103): baobab-trade commerce administration per Trade's own policy. No authority in CP/ERP/CMS/IAM (§14,§17)."
+        "description": "Gate IAM-5 (ADR-0009 §17,§103): baobab-trade commerce administration per Trade's own policy. No authority in CP/ERP/CMS/IAM (§14,§17).",
+        "composite": true,
+        "composites": { "realm": ["iam:mfa-required"] }
       },
       {
         "name": "cms:editor",
-        "description": "Gate IAM-5 (ADR-0009 §20): CMS content create/edit/submit-for-review. Does not include cms:publisher (§20-21)."
+        "description": "Gate IAM-5 (ADR-0009 §20): CMS content create/edit/submit-for-review. Does not include cms:publisher (§20-21).",
+        "composite": true,
+        "composites": { "realm": ["iam:mfa-required"] }
       },
       {
         "name": "cms:publisher",
-        "description": "Gate IAM-5 (ADR-0009 §21,§103): CMS publish authority, separable from cms:editor. No authority in CP/ERP/Trade/IAM (§14)."
+        "description": "Gate IAM-5 (ADR-0009 §21,§103): CMS publish authority, separable from cms:editor. No authority in CP/ERP/Trade/IAM (§14).",
+        "composite": true,
+        "composites": { "realm": ["iam:mfa-required"] }
+      },
+      {
+        "name": "iam:mfa-required",
+        "description": "Gate IAM-11 (ADR-0015 §24): marker role, not assigned directly. Every workforce admin role composites it in for the browser flow's MFA condition."
       }
     ]
   },
   "requiredCredentials": ["password"],
-  "passwordPolicy": "length(8) and digits and lowerCase and upperCase and notUsername",
+  "passwordPolicy": "length(15) and notUsername",
   "otpPolicyType": "totp",
   "otpPolicyAlgorithm": "HmacSHA1",
   "otpPolicyDigits": 6,
@@ -132,6 +150,94 @@
     "USER_INFO_REQUEST_ERROR",
     "USER_INFO_RESPONSE",
     "USER_INFO_RESPONSE_ERROR"
+  ],
+  "browserFlow": "Baobab browser",
+  "authenticationFlows": [
+    {
+      "alias": "Baobab browser",
+      "description": "Gate IAM-11 (ADR-0015 §24): copy of Keycloak's built-in 'browser' flow, plus a conditional MFA subflow gated on the iam:mfa-required role.",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "identity-provider-redirector",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "flowAlias": "Baobab forms",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "Baobab forms",
+      "description": "Gate IAM-11: username/password, then the privileged-MFA condition.",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "flowAlias": "Baobab - Privileged MFA",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "Baobab - Privileged MFA",
+      "description": "Gate IAM-11 (ADR-0015 §24): requires OTP only for users holding iam:mfa-required (directly or via composite role).",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-role",
+          "authenticatorConfig": "baobab-mfa-required-role",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "baobab-mfa-required-role",
+      "config": {
+        "condUserRole": "iam:mfa-required"
+      }
+    }
   ],
   "attributes": {
     "frontendUrl": "",

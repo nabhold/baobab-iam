@@ -43,14 +43,21 @@
   `/context/resolve*`/`/mapping/resolve*` endpoints now validate workload tokens. Ships
   against one explicit, documented deviation from ADR-0014 §9 (the stock plugin matches by
   email/username, not `issuer+subject`) — see
-  [Gate IAM-10 scope](./docs/governance/gate-iam-10-erp-integration-scope.md) §2.
+  [Gate IAM-10 scope](./docs/governance/gate-iam-10-erp-integration-scope.md) §2. Gate
+  IAM-11 (Credential Security/MFA/Passkeys, ADR-0015) phase 1 fixes a real password-policy
+  violation (§11-14: was requiring composition rules the ADR explicitly prohibits) and
+  makes MFA mandatory for every existing workforce admin role via a role-driven
+  conditional-OTP browser flow, verified structurally against a real Keycloak instance —
+  see [Gate IAM-11 scope](./docs/governance/gate-iam-11-credential-security-scope.md) §4
+  for this ADR's large remaining scope (passkeys as an MFA alternative, step-up for
+  specific high-risk actions, recovery hardening, break-glass, and more).
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
   authorization), Gate IAM-6's remaining phases, the shared Gate IAM-7/IAM-9
-  customer-OIDC-termination decision, Gate IAM-8's supplier-domain ownership decision, and
-  Gate IAM-10's remaining phases (closing its ADR-0014 §9 deviation, AD_User/Role/Client/Org
-  provisioning), then Gates IAM-11 through IAM-16 now that the identity spine underneath
-  them is sound.
+  customer-OIDC-termination decision, Gate IAM-8's supplier-domain ownership decision, Gate
+  IAM-10's remaining phases (closing its ADR-0014 §9 deviation, AD_User/Role/Client/Org
+  provisioning), and Gate IAM-11's remaining phases, then Gates IAM-12 through IAM-16 now
+  that the identity spine underneath them is sound.
 
 ---
 
