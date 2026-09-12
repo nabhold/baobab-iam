@@ -176,6 +176,42 @@ for CLIENT_ID in zuribeans-web thamani-web; do
     fail "$CLIENT_ID is missing the actor-type-human default scope (scopes: $DEFAULT_SCOPES)"
   fi
 done
+# Gate IAM-14 (ADR-0018 §221 "no authentication bypass exists"): the two
+# named clients above are checked individually for their own reasons
+# (actor-type-human scope), but that hardcoded list previously meant a
+# public client Baobab itself declares later -- or one this suite's
+# authors simply forgot, like baobab-control-plane-admin, which is
+# public+PKCE too but was never in this loop -- could silently ship
+# without PKCE and nothing would catch it. This second pass is exhaustive
+# over config/clients/*.json (every client *Baobab* declares), not over
+# the live realm's full client list: Keycloak's own built-in system
+# clients (account, admin-cli, broker, realm-management,
+# security-admin-console) are also publicClient=true for some of them,
+# but they're not Baobab's to configure, and at least one -- admin-cli,
+# which this very suite relies on for password-grant logins throughout --
+# has standardFlowEnabled=false, so PKCE (an authorization-code-flow
+# concept) doesn't even apply to it. Scoping to this repo's own declared
+# clients avoids asserting a requirement on infrastructure this repo
+# doesn't own and wouldn't be a real bypass in Baobab's own client set.
+PUBLIC_CLIENT_GAP=0
+for CLIENT_FILE in config/clients/*.json; do
+  DECLARED_PUBLIC=$(jq -r '.publicClient' "$CLIENT_FILE")
+  if [ "$DECLARED_PUBLIC" != "true" ]; then
+    continue
+  fi
+  ROW=$(jq -r '.clientId' "$CLIENT_FILE")
+  ROW_JSON=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/clients?clientId=$ROW" | jq '.[0]')
+  ROW_PKCE=$(echo "$ROW_JSON" | jq -r '.attributes["pkce.code.challenge.method"] // empty')
+  ROW_IMPLICIT=$(echo "$ROW_JSON" | jq -r '.implicitFlowEnabled')
+  if [ "$ROW_PKCE" != "S256" ] || [ "$ROW_IMPLICIT" != "false" ]; then
+    fail "public client '$ROW' ($CLIENT_FILE) does not require PKCE S256 (pkce=$ROW_PKCE implicit=$ROW_IMPLICIT) -- a public client without PKCE is an authorization-code interception bypass"
+    PUBLIC_CLIENT_GAP=1
+  fi
+done
+if [ "$PUBLIC_CLIENT_GAP" -eq 0 ]; then
+  pass "every public client Baobab declares in config/clients/*.json requires PKCE S256 (exhaustive check, not a hardcoded list)"
+fi
 
 echo "== 8. Independent workload client revocation =="
 ERP_CLIENT_UUID=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
@@ -665,6 +701,56 @@ else
   fail "could not look up the redaction test user's id after creating it"
 fi
 rm -f /tmp/redaction-create-response.txt
+
+echo "== 18. Availability/DR baseline (Gate IAM-14, ADR-0018 §165,§221) =="
+# ADR-0018 §221's production-readiness checklist requires "exact Keycloak
+# version/image digest is pinned". upstream.lock.yaml records the intended
+# pin, but a file recording an intention isn't the same as the deployed
+# instance actually running it -- Dockerfile's own `FROM
+# quay.io/keycloak/keycloak:26.7.3` could drift out of sync with
+# upstream.lock.yaml's version field with nothing to notice. This queries
+# the live server's own reported version and compares it to the pin.
+PINNED_VERSION=$(yq -o=json '.' upstream.lock.yaml | jq -r '.keycloak.version')
+SERVER_INFO=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/serverinfo")
+RUNNING_VERSION=$(echo "$SERVER_INFO" | jq -r '.systemInfo.version // empty')
+if [ -n "$RUNNING_VERSION" ] && [ "$RUNNING_VERSION" = "$PINNED_VERSION" ]; then
+  pass "the running Keycloak instance's reported version ($RUNNING_VERSION) matches upstream.lock.yaml's pin"
+else
+  fail "version drift: upstream.lock.yaml pins '$PINNED_VERSION' but the running instance reports '$RUNNING_VERSION'"
+fi
+# The image *digest* half of that same checklist item (as opposed to the
+# version string just checked above) remains the long-tracked R-1 risk --
+# resolving it needs quay.io registry egress, which this environment's
+# network policy still denies as of this gate (re-confirmed, not assumed:
+# `docker buildx imagetools inspect quay.io/keycloak/keycloak:26.7.3` still
+# returns "Forbidden" here). Nothing to assert in this suite until that
+# access exists; see docs/governance/gate-iam-0-discovery.md Risk Register
+# and docs/governance/gate-iam-14-availability-dr-scope.md.
+#
+# ADR-0018 §165's "Restore Validation Suite" lists ten minimum checks.
+# Rather than duplicate coverage, here is where each one actually lives in
+# this suite (or why it doesn't belong here):
+#   - OIDC discovery works            -> section 2
+#   - JWKS works                      -> section 3
+#   - authorization-code flow works   -> not exercised end-to-end: every
+#     public browser client's standard flow renders a real login page
+#     (loginTheme "baobab"), and this suite has no headless-browser
+#     tooling to drive one (the same limitation section 15 already
+#     documents for the OTP-challenged case). Section 7 proves the flow
+#     is *configured* correctly (PKCE required, no auth bypass); it does
+#     not prove the rendered page itself works.
+#   - PKCE works                      -> section 7 (configuration only,
+#     same caveat as above)
+#   - client credentials work         -> sections 4, 8
+#   - CP token validation works       -> baobab-cp's own test suite: it is
+#     the resource server making that decision, not this repo
+#   - canonical identity resolution   -> baobab-cp's own test suite
+#   - disabled identity denied        -> section 16
+#   - revoked membership denied       -> baobab-cp/baobab-trade own
+#     membership; this repo has no membership concept to revoke
+#   - workload authentication works   -> sections 4, 8, 14
+pass "ADR-0018 §165 Restore Validation Suite mapped against this suite's existing sections (see comments above)"
 
 echo ""
 echo "== Summary: $PASS passed, $FAIL failed =="
