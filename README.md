@@ -27,11 +27,16 @@
   IAM-7 (Thamani B2C, ADR-0011) is **scoped, not yet implemented** — discovery found two
   genuine architectural forks (where the customer OIDC redirect terminates; how a guest
   order's claim proof is delivered) that need their own decisions before code — see
-  [Gate IAM-7 scope](./docs/governance/gate-iam-7-thamani-b2c-scope.md) §3.
+  [Gate IAM-7 scope](./docs/governance/gate-iam-7-thamani-b2c-scope.md) §3. Gate IAM-8
+  (Supplier Identity, ADR-0012) is **scoped, not yet implemented** — discovery found no
+  repository anywhere owns "supplier domain" logic yet (a bigger blocker than Gate IAM-7's
+  forks), so implementation is deferred pending that ownership decision — see
+  [Gate IAM-8 scope](./docs/governance/gate-iam-8-supplier-identity-scope.md) §3.
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
-  authorization), Gate IAM-6's remaining phases, and Gate IAM-7's two open decisions, then
-  Gates IAM-8 through IAM-16 now that the identity spine underneath them is sound.
+  authorization), Gate IAM-6's remaining phases, Gate IAM-7's two open decisions, and Gate
+  IAM-8's supplier-domain ownership decision, then Gates IAM-9 through IAM-16 now that the
+  identity spine underneath them is sound.
 
 ---
 
