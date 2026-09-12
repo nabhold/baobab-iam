@@ -7,7 +7,8 @@
 ## Status
 
 - **Architecture:** [ADR-0001 through ADR-0018](./docs/adr/README.md)
-- **Implementation:** Gate IAM-2 (Keycloak foundation) hardening in progress — see
+- **Implementation:** All sixteen gates (IAM-0 through IAM-16) have had at least a phase 1
+  pass; Gate IAM-2 (Keycloak foundation) hardening itself remains open — see
   [Gate IAM-0 discovery](./docs/governance/gate-iam-0-discovery.md) for the verified
   implementation state and open risks (notably R-1: the pinned Keycloak image digest in
   `upstream.lock.yaml` is still a placeholder pending registry access). Gate IAM-3's
@@ -80,18 +81,30 @@
   account survives DR restore" row from the spec's Multi-Region Test Matrix is real but not
   yet proven end-to-end (no actual backup/restore/reconciliation exercise exists) — see
   [Gate IAM-15 scope](./docs/governance/gate-iam-15-multi-region-readiness-scope.md) §5, §7.
-- **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
-  IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
-  authorization), Gate IAM-6's remaining phases, the shared Gate IAM-7/IAM-9
-  customer-OIDC-termination decision, Gate IAM-8's supplier-domain ownership decision, Gate
-  IAM-10's remaining phases (closing its ADR-0014 §9 deviation, AD_User/Role/Client/Org
-  provisioning), Gate IAM-11's remaining phases, Gate IAM-12's open architectural fork
-  (whether IAM needs a custom Keycloak event-listener SPI or `baobab-cp` should poll its
-  native Admin Events API), Gate IAM-13's deferred retention-policy decision, Gate IAM-14's
-  real remaining gaps (the missing `baobab` theme, a post-backup security journal, and R-1),
-  and Gate IAM-15's deferred multi-region phases B-D (all `nabhold/infrastructure`'s, not
-  attempted before Phase A is solid per the spec's own recommendation), then Gate IAM-16
-  (Production Hardening) to close out the gate program.
+  Gate IAM-16 (Production Hardening) — the final gate in the program — validated all twelve
+  checklist items against real evidence rather than assuming them satisfied: closed two real
+  gaps (SBOM generation added to CI; a new
+  [security incident-response runbook](./docs/operations/security-incident-runbook.md) for
+  compromised credentials/clients, distinct from the DR runbook), gave a reasoned (not just
+  deferred) answer on login-storm risk against this realm's actual brute-force configuration,
+  and reported cross-tenant isolation accurately as partial (workload isolation proven;
+  buyer/Organization cross-isolation still Gate IAM-6 phase 2+) rather than repeating an
+  overclaim — see
+  [Gate IAM-16 scope](./docs/governance/gate-iam-16-production-hardening-scope.md).
+- **Next:** All sixteen numbered gates (IAM-0 through IAM-16) have now had at least a phase 1
+  pass. What remains is every gate's own deferred work, none of it resolved by reaching
+  IAM-16: Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate IAM-5's
+  remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin authorization),
+  Gate IAM-6's remaining phases (including cross-buyer isolation testing), the shared Gate
+  IAM-7/IAM-9 customer-OIDC-termination decision, Gate IAM-8's supplier-domain ownership
+  decision, Gate IAM-10's remaining phases (closing its ADR-0014 §9 deviation,
+  AD_User/Role/Client/Org provisioning), Gate IAM-11's remaining phases, Gate IAM-12's open
+  architectural fork (custom Keycloak event-listener SPI vs. `baobab-cp` polling the native
+  Admin Events API), Gate IAM-13's deferred retention-policy decision, Gate IAM-14's real
+  remaining gaps (the missing `baobab` theme, a post-backup security journal, and R-1), Gate
+  IAM-15's deferred multi-region phases B-D and its unproven DR-restore test-matrix row, and
+  Gate IAM-16's own open items (a penetration test, a real DR/load-testing exercise, a
+  bulk-revocation tool, an actually-run incident-response drill).
 
 ---
 
