@@ -503,6 +503,94 @@ fi
 # token-endpoint shortcut that exercises browserFlow at all -- see
 # docs/governance/gate-iam-11-credential-security-scope.md).
 
+echo "== 16. Identity lifecycle: kill switch and admin audit (Gate IAM-12, ADR-0016 §32,§139,§158-159) =="
+# admin-cli is Keycloak's own built-in client, present in every realm by
+# default with direct grants enabled -- used here (not a Baobab-created
+# client) purely to prove a real human login/logout/disable cycle end to
+# end, since no Baobab workforce client allows direct grants (Gate IAM-5).
+KILLSWITCH_USERNAME="gate-iam-12-killswitch-$(date +%s)"
+KILLSWITCH_PASSWORD="Gate-IAM-12-$(date +%s)-test-only"
+# email/firstName/lastName/emailVerified/requiredActions:[] are all required
+# here, not decorative: Keycloak 26's default declarative user profile marks
+# an incomplete profile with a VERIFY_PROFILE required action at creation
+# time, which then makes password-grant login fail with "Account is not
+# fully set up" (resolve_required_actions) even though the credential
+# itself is valid -- a real behavior confirmed against a live Keycloak
+# instance's own event log, not assumed.
+KILLSWITCH_CREATE_RESPONSE=$(curl -s --max-time 30 -o /tmp/killswitch-create-response.txt -w "%{http_code}" -X POST \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  "$KC_URL/admin/realms/$REALM/users" \
+  -d "{\"username\":\"$KILLSWITCH_USERNAME\",\"email\":\"$KILLSWITCH_USERNAME@example.invalid\",\"firstName\":\"Gate\",\"lastName\":\"IAM12\",\"emailVerified\":true,\"enabled\":true,\"requiredActions\":[],\"credentials\":[{\"type\":\"password\",\"value\":\"$KILLSWITCH_PASSWORD\",\"temporary\":false}]}")
+if [ "$KILLSWITCH_CREATE_RESPONSE" = "201" ]; then
+  pass "created a throwaway test user for the kill-switch smoke test"
+else
+  fail "could not create the kill-switch test user (HTTP $KILLSWITCH_CREATE_RESPONSE): $(cat /tmp/killswitch-create-response.txt)"
+fi
+KILLSWITCH_USER_ID=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/users?username=$KILLSWITCH_USERNAME&exact=true" | jq -r '.[0].id // empty')
+if [ -n "$KILLSWITCH_USER_ID" ]; then
+  # 1. Prove the user can actually authenticate before any revocation.
+  KILLSWITCH_TOKEN_RESPONSE=$(curl -s --max-time 30 -X POST "$KC_URL/realms/$REALM/protocol/openid-connect/token" \
+    -d "client_id=admin-cli" -d "grant_type=password" \
+    -d "username=$KILLSWITCH_USERNAME" -d "password=$KILLSWITCH_PASSWORD")
+  KILLSWITCH_ACCESS_TOKEN=$(echo "$KILLSWITCH_TOKEN_RESPONSE" | jq -r '.access_token // empty')
+  if [ -n "$KILLSWITCH_ACCESS_TOKEN" ]; then
+    pass "the test user can authenticate before any kill-switch action"
+  else
+    fail "the test user could not authenticate at all (response: $KILLSWITCH_TOKEN_RESPONSE)"
+  fi
+
+  # 2. Session revocation (ADR-0016 §27,§31,§159 "revoke IAM sessions").
+  SESSIONS_BEFORE=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/users/$KILLSWITCH_USER_ID/sessions" | jq 'length')
+  LOGOUT_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X POST \
+    -H "Authorization: Bearer $ADMIN_TOKEN" "$KC_URL/admin/realms/$REALM/users/$KILLSWITCH_USER_ID/logout")
+  SESSIONS_AFTER=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/users/$KILLSWITCH_USER_ID/sessions" | jq 'length')
+  if [ "$LOGOUT_RESPONSE" = "204" ] && [ "$SESSIONS_BEFORE" -ge 1 ] && [ "$SESSIONS_AFTER" = "0" ]; then
+    pass "revoking the user's sessions actually ends them ($SESSIONS_BEFORE -> $SESSIONS_AFTER)"
+  else
+    fail "session revocation did not behave as expected (before=$SESSIONS_BEFORE after=$SESSIONS_AFTER logout_http=$LOGOUT_RESPONSE)"
+  fi
+
+  # 3. Identity disablement (ADR-0016 §9,§14,§32 "disable/restrict identity").
+  DISABLE_RESPONSE=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" -X PUT \
+    -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+    "$KC_URL/admin/realms/$REALM/users/$KILLSWITCH_USER_ID" -d '{"enabled": false}')
+  POST_DISABLE_TOKEN_RESPONSE=$(curl -s --max-time 30 -X POST "$KC_URL/realms/$REALM/protocol/openid-connect/token" \
+    -d "client_id=admin-cli" -d "grant_type=password" \
+    -d "username=$KILLSWITCH_USERNAME" -d "password=$KILLSWITCH_PASSWORD")
+  POST_DISABLE_ACCESS_TOKEN=$(echo "$POST_DISABLE_TOKEN_RESPONSE" | jq -r '.access_token // empty')
+  if [ "$DISABLE_RESPONSE" = "204" ] && [ -z "$POST_DISABLE_ACCESS_TOKEN" ]; then
+    pass "a disabled identity can no longer authenticate at all (ADR-0016 §14, §211 'DISABLED identity + valid token = DENY')"
+  else
+    fail "disabling the identity did not prevent further authentication (disable_http=$DISABLE_RESPONSE, still got a token: $POST_DISABLE_TOKEN_RESPONSE)"
+  fi
+
+  # 4. Prove Gate IAM-12's adminEventsEnabled fix actually captured these
+  # administrative actions, not just that the config flag is set.
+  ADMIN_EVENTS=$(curl -s --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/admin-events?resourceTypes=USER&resourcePath=users/$KILLSWITCH_USER_ID")
+  if echo "$ADMIN_EVENTS" | jq -e 'length >= 1' > /dev/null 2>&1; then
+    pass "adminEventsEnabled actually captured this identity's administrative lifecycle actions (ADR-0016 §98,§139)"
+  else
+    fail "no admin-events were recorded for the kill-switch test user despite adminEventsEnabled=true"
+  fi
+
+  curl -s --max-time 30 -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/users/$KILLSWITCH_USER_ID" > /dev/null
+else
+  fail "could not look up the kill-switch test user's id after creating it"
+fi
+rm -f /tmp/killswitch-create-response.txt
+REALM_ADMIN_EVENTS_ENABLED=$(echo "$REALM_JSON" | jq -r '.adminEventsEnabled // false')
+REALM_ADMIN_EVENTS_DETAILS_ENABLED=$(echo "$REALM_JSON" | jq -r '.adminEventsDetailsEnabled // false')
+if [ "$REALM_ADMIN_EVENTS_ENABLED" = "true" ] && [ "$REALM_ADMIN_EVENTS_DETAILS_ENABLED" = "true" ]; then
+  pass "realm has adminEventsEnabled and adminEventsDetailsEnabled (ADR-0016 §98,§139 administrative audit)"
+else
+  fail "realm is missing adminEventsEnabled/adminEventsDetailsEnabled (enabled=$REALM_ADMIN_EVENTS_ENABLED details=$REALM_ADMIN_EVENTS_DETAILS_ENABLED)"
+fi
+
 echo ""
 echo "== Summary: $PASS passed, $FAIL failed =="
 if [ "$FAIL" -gt 0 ]; then

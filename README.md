@@ -50,14 +50,22 @@
   conditional-OTP browser flow, verified structurally against a real Keycloak instance —
   see [Gate IAM-11 scope](./docs/governance/gate-iam-11-credential-security-scope.md) §4
   for this ADR's large remaining scope (passkeys as an MFA alternative, step-up for
-  specific high-risk actions, recovery hardening, break-glass, and more).
+  specific high-risk actions, recovery hardening, break-glass, and more). Gate IAM-12
+  (Identity Lifecycle/Revocation/Deprovisioning, ADR-0016) phase 1 closed a real
+  administrative-audit gap (`adminEventsEnabled` was never set) and proved the IAM-side
+  "kill switch" — disable identity + revoke sessions — end-to-end against a real Keycloak
+  instance; most of this 213-section ADR is `baobab-cp`/domain-engine territory, not
+  `baobab-iam`'s — see
+  [Gate IAM-12 scope](./docs/governance/gate-iam-12-identity-lifecycle-scope.md) §1, §5.
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
   authorization), Gate IAM-6's remaining phases, the shared Gate IAM-7/IAM-9
   customer-OIDC-termination decision, Gate IAM-8's supplier-domain ownership decision, Gate
   IAM-10's remaining phases (closing its ADR-0014 §9 deviation, AD_User/Role/Client/Org
-  provisioning), and Gate IAM-11's remaining phases, then Gates IAM-12 through IAM-16 now
-  that the identity spine underneath them is sound.
+  provisioning), Gate IAM-11's remaining phases, and Gate IAM-12's open architectural fork
+  (whether IAM needs a custom Keycloak event-listener SPI or `baobab-cp` should poll its
+  native Admin Events API), then Gates IAM-13 through IAM-16 now that the identity spine
+  underneath them is sound.
 
 ---
 
