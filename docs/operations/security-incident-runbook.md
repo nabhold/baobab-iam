@@ -68,10 +68,17 @@ This is Gate IAM-12's "kill switch" (`tests/integration/run.sh` §16), used for 
    independently revokes only that client's ability to obtain tokens — other workload clients
    are unaffected (ADR-0007's independent-revocation requirement).
 2. **Rotate the secret** — follow
-   [`client-secret-rotation.md`](./client-secret-rotation.md).
-3. **Re-enable** once the affected system(s) have the new secret deployed.
-4. **Audit** — the same `admin-events` query as step 5 above, scoped to `resourceTypes=CLIENT`.
-5. **Check for tokens already issued** with the compromised secret before it was disabled —
+   [`client-secret-rotation.md`](./client-secret-rotation.md) steps 1-4 (capture the old
+   secret, generate and set a new one, deploy it to the workload). **Do not run that
+   document's step 5 (verification) yet** — the client is still disabled, so every check in
+   it would fail regardless of whether rotation actually worked.
+3. **Re-enable** once the affected system(s) have the new secret deployed — `PUT
+   /admin/realms/baobab/clients/{uuid}` with `{"enabled": true}`.
+4. **Now run `client-secret-rotation.md`'s step 5** (verify the new secret works and the old
+   one is rejected) — this only produces a meaningful result once the client is enabled again.
+5. **Audit** — the same `admin-events` query as step 5 in §2 above, scoped to
+   `resourceTypes=CLIENT`.
+6. **Check for tokens already issued** with the compromised secret before it was disabled —
    these remain valid until natural expiry (`accessTokenLifespan: 900` seconds, per
    `config/realm/baobab-realm.json`); the consuming resource server (`baobab-cp`, an engine)
    is responsible for its own short-lived-token exposure window, matching ADR-0018 §92's
