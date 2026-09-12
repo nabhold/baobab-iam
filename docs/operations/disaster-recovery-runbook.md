@@ -47,15 +47,37 @@ Per §92-93, **a successful Keycloak startup after restore is not the same as
 1. Deploy the image pinned by this repository's `Dockerfile` and `upstream.lock.yaml`
    (step 6) once Infrastructure confirms PostgreSQL and secrets are restored and
    reachable (steps 2-5).
-2. Run `make bootstrap` against the restored, empty-or-partial realm. Bootstrap is
-   idempotent (ADR-0002) — it is safe to run against a realm that already has some
-   or all of its configuration, since it reconciles to the checked-in JSON rather
-   than assuming a clean slate.
-3. Run `BOOTSTRAP_WORKLOAD_CLIENT_SECRET=<value> ./tests/integration/run.sh`
-   against the restored instance (steps 9, 14). A clean pass proves discovery,
-   JWKS, workload authentication, PKCE enforcement, workforce/role separation,
-   MFA flow structure, and the identity-lifecycle kill switch all work on the
-   restored instance — not just that Keycloak started.
+2. Run `make bootstrap` against the restored, empty-or-partial realm to re-provision
+   whatever the restore is missing. **This is idempotent only in the sense that it is
+   safe to re-run — it does NOT reconcile drift on objects that already exist.**
+   Reading `scripts/bootstrap.sh` directly: if the realm already exists, realm-level
+   creation is skipped entirely (no attribute/flow/role reconciliation runs at all
+   in that case); scopes and clients are only ever `kcadm create`d, and a create
+   against an object that already exists is swallowed as "may already exist;
+   skipping" rather than followed by an update. So bootstrap fills in objects a
+   restore is missing; it does not correct stale configuration on objects a restore
+   already produced. If a real restore leaves the realm with existing-but-incorrect
+   objects (not just missing ones), someone SHALL diff the restored realm's actual
+   configuration against `config/realm/baobab-realm.json`/`config/clients/*.json`/
+   `config/scopes/*.json` and correct drift manually (or via `kcadm update`) before
+   proceeding — this is a real, unimplemented gap in this repo's tooling, not a
+   solved problem; see
+   [Gate IAM-14 scope](../governance/gate-iam-14-availability-dr-scope.md) §7.
+   In production, workload client secrets come from Infrastructure's
+   secret-management boundary (ADR-0002 §25) at client-creation time — never from
+   `BOOTSTRAP_WORKLOAD_CLIENT_SECRET`, which exists only for local/CI reproducibility
+   and SHALL NOT be used in a real recovery.
+3. Run `tests/integration/run.sh` against the restored instance (steps 9, 14), with
+   `BOOTSTRAP_WORKLOAD_CLIENT_SECRET` set to whichever real secret the smoke test's
+   workload client actually has in the restored realm (the same value step 2's client
+   creation used, sourced from the same secret-management boundary — a mismatch here
+   fails the workload-authentication checks on a secret mismatch, not a real defect).
+   For a local/CI recovery **drill** (not a real production restore), set
+   `BOOTSTRAP_WORKLOAD_CLIENT_SECRET` to the same value for both this step and step 2,
+   exactly as [`README.md`](../../README.md)'s own verification instructions do. A
+   clean pass proves discovery, JWKS, workload authentication, PKCE enforcement,
+   workforce/role separation, MFA flow structure, and the identity-lifecycle kill
+   switch all work on the restored instance — not just that Keycloak started.
 4. Before declaring `baobab-iam` itself ready for step 12 (CP integration
    validation) to proceed, manually confirm (per step 10-11's known gap) that any
    identity, credential, session, or role revoked between the backup's point in

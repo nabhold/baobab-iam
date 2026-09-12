@@ -114,25 +114,57 @@ gate's job is IAM-14, not a rewrite of Gate IAM-0's discovery doc).
    required "Restore Validation Suite" checks to where each one is actually proven in this
    suite today (or which repository/limitation owns the gap).
 
+## 6a. Review findings (Codex) — verified and fixed
+
+Automated PR review flagged three real issues, each verified directly against this
+repo's own scripts before fixing (not taken on faith):
+
+1. **`scripts/bootstrap.sh` does not reconcile drift on existing objects** — confirmed
+   by reading the script: if the realm already exists, realm-level import is skipped
+   entirely; scopes/clients are only ever `kcadm create`d, with a create-against-existing
+   failure silently swallowed rather than followed by an update. The runbook originally
+   claimed bootstrap "reconciles to the checked-in JSON" — false. Fixed the runbook's
+   wording to state the real behavior (fills in what's missing; does not correct what's
+   already wrong) and added this as an open item (§7 below) rather than papering over it.
+2. **Runbook's own recovery steps were internally inconsistent about
+   `BOOTSTRAP_WORKLOAD_CLIENT_SECRET`** — step 2 (`make bootstrap`) omitted it while step 3
+   (`tests/integration/run.sh`) assumed a client secret was already known, which only
+   works if both steps use the same value (workload secrets are seeded at
+   client-*creation* time only). Fixed the runbook to make both steps use the same value
+   explicitly, and to state plainly that this variable is a local/CI-only mechanism
+   (per `scripts/bootstrap.sh`'s own comment) — a real production restore sources workload
+   secrets from Infrastructure's secret-management boundary instead.
+3. **The exhaustive PKCE check queried the live realm instead of this repo's own declared
+   clients** — already covered in §4 above (this was the CI-failing version of the fix,
+   caught by CI itself before the bot's matching review comment landed).
+
 ## 7. What remains open (deferred, not started)
 
-1. **R-1** (image digest) — still blocked on `quay.io` registry egress; unchanged this gate.
-2. **`loginTheme`/`accountTheme: "baobab"` doesn't exist** (§5 above) — a real, newly
+1. **`scripts/bootstrap.sh` is create-only, not a real reconciler** (§6a.1) — a restore
+   that leaves stale-but-present realm/client/scope configuration (as opposed to
+   missing configuration) is not corrected by `make bootstrap` today. Building real
+   `kcadm update`-based reconciliation (or switching to Keycloak's declarative
+   realm-import-on-boot mechanism, if it supports true upsert semantics) is a
+   meaningfully sized change to this repo's core provisioning tool, not something to
+   fold into this gate's bounded phase 1 — flagged here for a future gate or a
+   dedicated provisioning-hardening PR.
+2. **R-1** (image digest) — still blocked on `quay.io` registry egress; unchanged this gate.
+3. **`loginTheme`/`accountTheme: "baobab"` doesn't exist** (§5 above) — a real, newly
    discovered defect; not fixed here, flagged for a future theming/ADR-0002 pass.
-3. **A real authorization-code + PKCE round trip test** — blocked by #2 above until a real
+4. **A real authorization-code + PKCE round trip test** — blocked by #3 above until a real
    theme exists (or the realm is pointed at a built-in theme), and by the lack of
    headless-browser tooling in this suite's CI (the same limitation Gate IAM-11's scope doc
    already documents for the OTP-challenged case).
-4. **Post-backup security journal** (§96-100) — no mechanism exists to record
+5. **Post-backup security journal** (§96-100) — no mechanism exists to record
    revocations/disablements that happen after the most recent backup so they can be
    correctly re-applied on restore. This is the single largest remaining IAM-relevant gap in
    this ADR; building it well requires deciding where it lives (a durable log this repo
    owns, vs. `baobab-cp` owning it as part of its own lifecycle event consumption per Gate
    IAM-12 §5's still-open architectural fork) — not guessed at here.
-5. **RPO/RTO targets, DR exercises, HA topology, backup/PITR, secret recovery, TLS/PKI,
+6. **RPO/RTO targets, DR exercises, HA topology, backup/PITR, secret recovery, TLS/PKI,
    multi-AZ failure domains** (§18-120, §215-220) — entirely `nabhold/infrastructure`'s
    territory; not investigated this session (that repository is attached but out of scope
    for a Keycloak realm-configuration gate).
-6. **Digital Estate / ERP / Trade / CP post-restore validation** (§166-171) — each
+7. **Digital Estate / ERP / Trade / CP post-restore validation** (§166-171) — each
    downstream repository's own responsibility to test against a restored IAM instance; not
    `baobab-iam` code.
