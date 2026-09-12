@@ -91,6 +91,8 @@
   "emailTheme": "keycloak",
   "eventsEnabled": true,
   "eventsListeners": ["jboss-logging"],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
   "enabledEventTypes": [
     "LOGIN",
     "LOGIN_ERROR",
