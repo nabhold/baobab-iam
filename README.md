@@ -62,7 +62,15 @@
   secrets (a plaintext-password marker never appears in the resulting audit record) and that
   credential revocation is captured in the audit trail; most of this 205-section ADR is
   `baobab-cp`/domain-engine/infrastructure territory — see
-  [Gate IAM-13 scope](./docs/governance/gate-iam-13-audit-observability-scope.md) §1, §4.
+  [Gate IAM-13 scope](./docs/governance/gate-iam-13-audit-observability-scope.md) §1, §4. Gate
+  IAM-14 (Availability/Backup/DR, ADR-0018) phase 1 adds this repo's first
+  [DR runbook](./docs/operations/disaster-recovery-runbook.md), verifies the running
+  Keycloak instance's version actually matches `upstream.lock.yaml`'s pin (not just that the
+  file claims one), and closes a real PKCE coverage gap (`baobab-control-plane-admin` was
+  never checked by the old hardcoded client list); R-1 (image digest) is re-confirmed still
+  blocked on `quay.io` egress, and a new, unrelated defect (`loginTheme`/`accountTheme:
+  "baobab"` references a theme that was never built) was found and deliberately left open —
+  see [Gate IAM-14 scope](./docs/governance/gate-iam-14-availability-dr-scope.md) §5, §7.
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
   authorization), Gate IAM-6's remaining phases, the shared Gate IAM-7/IAM-9
@@ -70,8 +78,10 @@
   IAM-10's remaining phases (closing its ADR-0014 §9 deviation, AD_User/Role/Client/Org
   provisioning), Gate IAM-11's remaining phases, Gate IAM-12's open architectural fork
   (whether IAM needs a custom Keycloak event-listener SPI or `baobab-cp` should poll its
-  native Admin Events API), and Gate IAM-13's deferred retention-policy decision, then Gates
-  IAM-14 through IAM-16 now that the identity spine underneath them is sound.
+  native Admin Events API), Gate IAM-13's deferred retention-policy decision, and Gate
+  IAM-14's real remaining gaps (the missing `baobab` theme, a post-backup security journal,
+  and R-1), then Gates IAM-15 and IAM-16 now that the identity spine underneath them is
+  sound.
 
 ---
 
