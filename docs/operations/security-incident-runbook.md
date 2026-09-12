@@ -34,15 +34,17 @@ domain engine's incident response, not `baobab-iam`'s).
 
 This is Gate IAM-12's "kill switch" (`tests/integration/run.sh` §16), used for real:
 
-1. **Revoke sessions immediately** — `POST /admin/realms/baobab/users/{id}/logout`. Ends every
-   active session for that identity right away, independent of whether the credential itself
-   has been rotated yet.
-2. **Disable the identity** — `PUT /admin/realms/baobab/users/{id}` with `{"enabled": false}`.
-   Per ADR-0016 §211 ("DISABLED identity + valid token = DENY" from the IAM side), this
-   prevents any *new* authentication; it does not itself invalidate an already-issued,
-   still-valid access token still being accepted downstream — the affected engine(s) enforce
-   that from their own side (short-lived-token expiry, or their own revocation-check against
-   IAM).
+1. **Disable the identity first** — `PUT /admin/realms/baobab/users/{id}` with
+   `{"enabled": false}`. This order matters: if sessions were revoked first while the identity
+   stays enabled, an attacker still holding the compromised password can simply log in again
+   before the next step completes, obtaining a fresh session and access token. Disabling first
+   closes that window — per ADR-0016 §211 ("DISABLED identity + valid token = DENY" from the
+   IAM side), this prevents any *new* authentication; it does not itself invalidate an
+   already-issued, still-valid access token still being accepted downstream — the affected
+   engine(s) enforce that from their own side (short-lived-token expiry, or their own
+   revocation-check against IAM).
+2. **Then revoke sessions** — `POST /admin/realms/baobab/users/{id}/logout`. Ends every active
+   session for that identity now that no new one can replace it.
 3. **Delete the compromised credential** — `DELETE
    /admin/realms/baobab/users/{id}/credentials/{credentialId}` (find the credential ID via
    `GET /admin/realms/baobab/users/{id}/credentials`, filtering `type == "password"`). Gate
