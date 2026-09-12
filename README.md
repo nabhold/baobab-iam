@@ -73,11 +73,13 @@
   see [Gate IAM-14 scope](./docs/governance/gate-iam-14-availability-dr-scope.md) §5, §7. Gate
   IAM-15 (Multi-Region Readiness) required no `baobab-iam` code changes — discovery found
   `baobab-cp` already implements the region/market/`CapabilityBinding`/`EngineInstance` model
-  this gate's checklist describes, the IAM/CP boundary needs no region claim (CP resolves
-  region from its own data, not from IAM tokens), and this repo's current single-global-realm
-  architecture is the correct Phase A per the Consolidated Spec's own multi-region evolution
-  model, not a gap — see
-  [Gate IAM-15 scope](./docs/governance/gate-iam-15-multi-region-readiness-scope.md).
+  this gate's checklist describes (including real residency-mismatch enforcement in its
+  topology resolver), the IAM/CP boundary needs no region claim, and this repo's current
+  single-global-realm architecture is the correct Phase A per the Consolidated Spec's own
+  multi-region evolution model. One item does NOT get a clean bill of health: the "revoked
+  account survives DR restore" row from the spec's Multi-Region Test Matrix is real but not
+  yet proven end-to-end (no actual backup/restore/reconciliation exercise exists) — see
+  [Gate IAM-15 scope](./docs/governance/gate-iam-15-multi-region-readiness-scope.md) §5, §7.
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
   authorization), Gate IAM-6's remaining phases, the shared Gate IAM-7/IAM-9

@@ -2,8 +2,12 @@
 
 **Status:** Phase 1 complete — a verification gate, not a build-out gate. No code or
 configuration changes were needed in `baobab-iam` itself; this gate's job (per its own
-governing text) is to confirm "architectural readiness," and that readiness turns out to
-already exist, owned by `baobab-cp` and already exercised by Gates IAM-12/13/14.
+governing text) is to confirm "architectural readiness." Most of the checklist is genuinely
+satisfied, owned by `baobab-cp`'s already-built region/market/`CapabilityBinding` model — but
+review caught this document initially overclaiming one item (§164's "revoked account survives
+DR restore" row is real but NOT yet proven end-to-end; see §5, §6a, §7.1) and citing the wrong
+function for residency enforcement (fixed in §2, §6a). Corrected before merge, not glossed
+over.
 **Date:** 2026-09-12
 **Governing spec:** `docs/adr/Consolidated-Technical-Specification.md` §218 ("Gate IAM-15 —
 Multi-Region Readiness"), cross-referenced against §23-27 (Multi-Region Model), §122-125
@@ -42,9 +46,15 @@ read directly. It already has, real and substantial:
   cutover between two `EngineInstance`s, explicitly documented as "an infrastructure move
   must never rewrite business identity" — exactly §180's "IAM architecture and domain-engine
   regionalization are related but not identical" principle, already enforced in code.
-- `internal/resolver/policy.go` — `PolicyChecker.Check()` denies a resolution when
-  `ctx.CountryCode == "" && ctx.MarketID == ""` ("market or country context required"),
-  i.e., residency/market context is already a hard precondition for capability resolution.
+- `internal/resolver/topology.go` — `TopologyResolverImpl.Resolve()` denies resolution
+  ("engine instance residency mismatch") when `instance.ResidencyRegion` doesn't match the
+  trusted context's `DeploymentRegion`, and separately denies on region/environment/isolation
+  mismatches too. This is real residency *enforcement* (a DENY on mismatch), not just a
+  presence check — it is the mechanism behind §164's "failover violates residency policy →
+  DENY" row. (`internal/resolver/policy.go`'s `PolicyChecker.Check()` only asserts that
+  `CountryCode`/`MarketID` is non-empty before resolution proceeds; it does not itself compare
+  against a residency policy, so it is not evidence of enforcement on its own — corrected here
+  after review, see §6a below.)
 - `internal/repository/postgres_market_test.go`, `internal/resolver/topology_test.go` — Market
   and topology already have real, tested persistence/resolution logic.
 
@@ -76,17 +86,29 @@ diagram (read during Gate IAM-14) already shows this exact shape: two failure do
 running Keycloak instances against one shared HA PostgreSQL — multi-AZ HA within a single
 region, consistent with Phase A.
 
-## 5. Discovery — §164's IAM-relevant test-matrix row is already proven
+## 5. Discovery — §164's IAM-relevant test-matrix row is real but NOT yet proven end-to-end
 
-§164's "Multi-Region Test Matrix" has one row that is actually `baobab-iam`'s to prove:
-"Revoked account in primary then DR restore → Remains revoked." This is word-for-word the
-same invariant ADR-0018 §94-95 states ("a backup restore SHALL NOT return previously revoked
-identity authority to service"), which Gate IAM-12's kill-switch test
-(`tests/integration/run.sh` §16) already exercises the mechanics of, and Gate IAM-14's DR
-runbook already documents as a manual step-4 verification during actual recovery. The other
-rows ("ZA user routed to ZA engine," "duplicate identity in two regions reconciles to one
-CanonicalIdentity," "failover violates residency policy → DENY") are `baobab-cp`'s routing and
-identity-uniqueness invariants, not `baobab-iam`'s.
+§164's "Multi-Region Test Matrix" has one row that is `baobab-iam`'s to prove: "Revoked
+account in primary then DR restore → Remains revoked." This is word-for-word the same
+invariant ADR-0018 §94-95 states ("a backup restore SHALL NOT return previously revoked
+identity authority to service").
+
+**Corrected after review (see §6a below): this is not yet proven, and this document
+originally overstated it.** Gate IAM-12's kill-switch test (`tests/integration/run.sh` §16)
+proves that a *currently* disabled identity cannot authenticate — it never exercises an
+actual backup, restore, or post-restore reconciliation step, so it says nothing about what
+happens if a backup taken *before* a revocation is restored *after* it. Gate IAM-14's own DR
+runbook is explicit that no automated mechanism exists to prevent that resurrection (§96-100's
+"post-backup security journal" is unbuilt) and that reconciling it today is a manual,
+unverified step. This test-matrix row therefore stays open — tracked in §7 below, not claimed
+as done — until a real backup/restore/reconciliation exercise (Gate IAM-14's own §7.4 item)
+actually proves it.
+
+The other rows ("ZA user routed to ZA engine," "duplicate identity in two regions reconciles
+to one CanonicalIdentity," "failover violates residency policy → DENY") are `baobab-cp`'s
+routing and identity-uniqueness invariants, not `baobab-iam`'s — §2 above confirms the
+mechanism (`topology.go`'s residency-mismatch DENY) is real for engine routing; whether it
+extends to identity data itself is `baobab-cp`'s own scope to verify, not restated here.
 
 ## 6. Phase 1 (this PR)
 
@@ -97,15 +119,43 @@ assumed satisfied. Manufacturing a `baobab-iam`-side change for its own sake —
 redundant region claim nothing consumes, or an integration-test section that only re-asserts
 what §16/§18 already prove — was deliberately avoided.
 
+## 6a. Review findings (Codex) — verified and fixed
+
+Automated PR review flagged two real accuracy problems in this document's first draft, both
+verified directly against `baobab-cp`'s and this repo's own code before fixing (not taken on
+faith, and not dismissed as pedantic either — a governance document that overclaims is worse
+than one that says nothing):
+
+1. **§2's residency-enforcement citation was the wrong function.** The original draft cited
+   `internal/resolver/policy.go`'s `PolicyChecker.Check()` as evidence residency is enforced —
+   but that function only checks that `CountryCode`/`MarketID` is *non-empty*, never that the
+   resolved binding is actually *permitted* for that context. Re-reading further into
+   `baobab-cp` found the function that actually does this:
+   `internal/resolver/topology.go`'s `TopologyResolverImpl.Resolve()`, which denies resolution
+   with `"engine instance residency mismatch"` when `instance.ResidencyRegion` doesn't match
+   the trusted context's `DeploymentRegion`. Fixed §2 to cite the real mechanism.
+2. **§5 claimed the "revoked account survives DR restore" test-matrix row was "already
+   proven."** It wasn't — Gate IAM-12's test never exercises an actual backup/restore cycle,
+   and Gate IAM-14's own DR runbook already documents that no automated post-backup
+   reconciliation exists. Fixed §5 to state this accurately and moved it into §7 as an open
+   item rather than a claimed result.
+
 ## 7. What remains open (deferred, not started)
 
-1. **Phase B (warm DR region), Phase C (supported multi-site Keycloak), Phase D (regional
+1. **Prove §164's "revoked account survives DR restore" row for real** (§5 above) — needs an
+   actual backup/restore/reconciliation exercise, not just the current-state DENY Gate IAM-12
+   already proves. This is the same work as Gate IAM-14's §7.4 "post-backup security journal"
+   item; not duplicated as a separate task here.
+2. **Phase B (warm DR region), Phase C (supported multi-site Keycloak), Phase D (regional
    identity strategy)** (§124) — explicitly `nabhold/infrastructure`'s territory, and per §123
    deliberately not attempted before Phase A is solid. Nothing to design here until
    Infrastructure proposes standing up a second Keycloak-capable region.
-2. **§148's Data Sovereignty Rule, exercised for real** — untestable today because there is
+3. **§148's Data Sovereignty Rule, exercised for real** — untestable today because there is
    only one IAM region; the moment a genuine second region/DR site exists, this gate should be
    revisited to add a real cross-region test proving `baobab-iam` never processes identity data
-   outside an approved jurisdiction.
-3. **`baobab-cp`'s own remaining work** on `CapabilityBinding`/`EngineInstance`/relocation is
+   outside an approved jurisdiction. Note `baobab-cp`'s `topology.go` already enforces an
+   analogous residency invariant for engine routing — whether an equivalent needs to exist for
+   IAM's own identity data specifically is unresolved, since IAM has no second region to
+   enforce it against yet.
+4. **`baobab-cp`'s own remaining work** on `CapabilityBinding`/`EngineInstance`/relocation is
    that repository's own gate program, not tracked here.
