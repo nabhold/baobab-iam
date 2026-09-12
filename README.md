@@ -23,11 +23,15 @@
   (Zuribeans B2B, ADR-0010) phase 1 (Keycloak Organizations enabled, verified end-to-end
   against a real Keycloak instance) is complete — see
   [Gate IAM-6 scope](./docs/governance/gate-iam-6-zuribeans-b2b-scope.md) for phases 2+
-  (`baobab-cp` canonical-entity wiring, cross-buyer isolation against real tokens).
+  (`baobab-cp` canonical-entity wiring, cross-buyer isolation against real tokens). Gate
+  IAM-7 (Thamani B2C, ADR-0011) is **scoped, not yet implemented** — discovery found two
+  genuine architectural forks (where the customer OIDC redirect terminates; how a guest
+  order's claim proof is delivered) that need their own decisions before code — see
+  [Gate IAM-7 scope](./docs/governance/gate-iam-7-thamani-b2c-scope.md) §3.
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
-  authorization), and Gate IAM-6's remaining phases, then Gates IAM-7 through IAM-16 now
-  that the identity spine underneath them is sound.
+  authorization), Gate IAM-6's remaining phases, and Gate IAM-7's two open decisions, then
+  Gates IAM-8 through IAM-16 now that the identity spine underneath them is sound.
 
 ---
 
