@@ -34,7 +34,7 @@ A discovery pass across all five engine repos, cross-checked directly against co
 1. **No distinct workforce admin client registrations** (§9-10) — fixed in phase 1 for CP/CMS/Trade (§4).
 2. **No workforce role namespace** (§102-103) — fixed in phase 1: a starter realm-role catalog (§4).
 3. **`baobab-cp`'s admin routes were unreachable by any real human token** (§3, §93 — "IAM login succeeds but application access denied" is expected only when authorization is correctly evaluated, not when the actor-type check itself is unsatisfiable) — fixed in phase 1 (§4).
-4. **No actual SSO wiring in any engine's admin UI** (§6) — CMS and Trade both have clean, identified integration points (§1) but neither is wired yet. Deferred to phase 2 (§5).
+4. **No actual SSO wiring in any engine's admin UI** (§6) — **closed.** Trade (phase 2a, `nabhold/baobab-trade#70`) and CMS (phase 2b, `nabhold/baobab-cms#9`) are both wired now; `baobab-cp` has no admin console of its own yet to wire, and `baobab-pulse` has no admin surface at all (§1).
 5. **No CP admin role model beyond flat scopes** (§14-16) — the new `cp:platform-admin`/`cp:tenant-admin` realm roles (§4) give IAM-side vocabulary, but nothing in `baobab-cp` yet maps a workforce token's roles into scoped authorization decisions beyond the existing flat per-route scopes. Deferred to phase 3 (§5).
 6. **MFA is not enforced for any client, privileged or not** (§37-40) — deferred to ADR-0015/Gate IAM-11 per ADR-0009's own text.
 7. **No joiner/mover/leaver process, break-glass mechanism, or access-review tooling** (§29-36, §53-67) — deferred; these require `baobab-cp`'s workforce-membership model (§27) to exist first, which is itself downstream of this gate's SSO plumbing.
