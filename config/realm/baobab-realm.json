@@ -1,6 +1,7 @@
 {
   "realm": "baobab",
   "enabled": true,
+  "organizationsEnabled": true,
   "displayName": "Baobab Platform",
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,

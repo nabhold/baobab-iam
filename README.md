@@ -19,11 +19,15 @@
   namespace, a real `baobab-cp` admin-authorization defect fixed) and phase 2a
   (`baobab-trade` OIDC wiring, `nabhold/baobab-trade#70`) are complete. Phase 2b
   (`baobab-cms` OIDC wiring) is explicitly deferred to its own phase — see
-  [Gate IAM-5 scope](./docs/governance/gate-iam-5-workforce-sso-scope.md) §5.1.
-- **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline) and Gate
+  [Gate IAM-5 scope](./docs/governance/gate-iam-5-workforce-sso-scope.md) §5.1. Gate IAM-6
+  (Zuribeans B2B, ADR-0010) phase 1 (Keycloak Organizations enabled, verified end-to-end
+  against a real Keycloak instance) is complete — see
+  [Gate IAM-6 scope](./docs/governance/gate-iam-6-zuribeans-b2b-scope.md) for phases 2+
+  (`baobab-cp` canonical-entity wiring, cross-buyer isolation against real tokens).
+- **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
-  authorization), then Gates IAM-6 through IAM-16 now that the identity
-  spine underneath them is sound.
+  authorization), and Gate IAM-6's remaining phases, then Gates IAM-7 through IAM-16 now
+  that the identity spine underneath them is sound.
 
 ---
 
