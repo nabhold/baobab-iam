@@ -179,26 +179,38 @@ done
 # Gate IAM-14 (ADR-0018 §221 "no authentication bypass exists"): the two
 # named clients above are checked individually for their own reasons
 # (actor-type-human scope), but that hardcoded list previously meant a
-# public client added later -- or one this suite's authors simply forgot,
-# like baobab-control-plane-admin, which is public+PKCE too but was never
-# in this loop -- could silently ship without PKCE and nothing would
-# catch it. This second, exhaustive pass queries every client in the
-# realm and asserts the invariant for all of them, so the check can't be
-# outrun by realm-config drift.
-ALL_CLIENTS=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
-  "$KC_URL/admin/realms/$REALM/clients")
+# public client Baobab itself declares later -- or one this suite's
+# authors simply forgot, like baobab-control-plane-admin, which is
+# public+PKCE too but was never in this loop -- could silently ship
+# without PKCE and nothing would catch it. This second pass is exhaustive
+# over config/clients/*.json (every client *Baobab* declares), not over
+# the live realm's full client list: Keycloak's own built-in system
+# clients (account, admin-cli, broker, realm-management,
+# security-admin-console) are also publicClient=true for some of them,
+# but they're not Baobab's to configure, and at least one -- admin-cli,
+# which this very suite relies on for password-grant logins throughout --
+# has standardFlowEnabled=false, so PKCE (an authorization-code-flow
+# concept) doesn't even apply to it. Scoping to this repo's own declared
+# clients avoids asserting a requirement on infrastructure this repo
+# doesn't own and wouldn't be a real bypass in Baobab's own client set.
 PUBLIC_CLIENT_GAP=0
-for ROW in $(echo "$ALL_CLIENTS" | jq -r '.[] | select(.publicClient == true) | .clientId'); do
-  ROW_JSON=$(echo "$ALL_CLIENTS" | jq --arg id "$ROW" '.[] | select(.clientId == $id)')
+for CLIENT_FILE in config/clients/*.json; do
+  DECLARED_PUBLIC=$(jq -r '.publicClient' "$CLIENT_FILE")
+  if [ "$DECLARED_PUBLIC" != "true" ]; then
+    continue
+  fi
+  ROW=$(jq -r '.clientId' "$CLIENT_FILE")
+  ROW_JSON=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/clients?clientId=$ROW" | jq '.[0]')
   ROW_PKCE=$(echo "$ROW_JSON" | jq -r '.attributes["pkce.code.challenge.method"] // empty')
   ROW_IMPLICIT=$(echo "$ROW_JSON" | jq -r '.implicitFlowEnabled')
   if [ "$ROW_PKCE" != "S256" ] || [ "$ROW_IMPLICIT" != "false" ]; then
-    fail "public client '$ROW' does not require PKCE S256 (pkce=$ROW_PKCE implicit=$ROW_IMPLICIT) -- a public client without PKCE is an authorization-code interception bypass"
+    fail "public client '$ROW' ($CLIENT_FILE) does not require PKCE S256 (pkce=$ROW_PKCE implicit=$ROW_IMPLICIT) -- a public client without PKCE is an authorization-code interception bypass"
     PUBLIC_CLIENT_GAP=1
   fi
 done
 if [ "$PUBLIC_CLIENT_GAP" -eq 0 ]; then
-  pass "every public client in the realm requires PKCE S256 (exhaustive check, not a hardcoded list)"
+  pass "every public client Baobab declares in config/clients/*.json requires PKCE S256 (exhaustive check, not a hardcoded list)"
 fi
 
 echo "== 8. Independent workload client revocation =="

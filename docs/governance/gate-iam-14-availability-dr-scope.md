@@ -60,9 +60,19 @@ hardcoded list was complete) found three `publicClient: true` clients requiring 
 Gate IAM-5) was never covered by this specific invariant, even though its own config is
 correct today. This is exactly the kind of drift ADR-0018 §221's "no authentication bypass
 exists" checklist item exists to catch, and a hardcoded client list can't catch a future
-public client the suite's author forgets to add. Fixed: §7 now also runs an exhaustive pass
-over every client the realm actually has, asserting the PKCE-S256 invariant for all of them
-rather than a named subset.
+public client the suite's author forgets to add.
+
+Fixed: §7 now also runs an exhaustive pass — but over `config/clients/*.json` (every client
+*Baobab* declares), not over the live realm's full client list. The first version of this
+fix queried the realm directly and broke CI: Keycloak provisions its own built-in system
+clients (`account`, `admin-cli`, `broker`, `realm-management`, `security-admin-console`)
+into every realm, and two of them (`account`, `admin-cli`) are `publicClient: true` with no
+PKCE requirement. `admin-cli` in particular has `standardFlowEnabled: false` — it is used
+throughout this very suite for password-grant logins — so PKCE (an authorization-code-flow
+concept) does not even apply to it. These clients aren't Baobab's to configure and asserting
+a PKCE requirement on them would be asserting a requirement on infrastructure this repo
+doesn't own. Scoping the exhaustive pass to `config/clients/*.json`'s own declared clients
+fixed this while still closing the original `baobab-control-plane-admin` gap.
 
 ## 5. Discovery — a real, adjacent, out-of-scope defect: `loginTheme`/`accountTheme: "baobab"` doesn't exist
 
