@@ -510,10 +510,17 @@ echo "== 16. Identity lifecycle: kill switch and admin audit (Gate IAM-12, ADR-0
 # end, since no Baobab workforce client allows direct grants (Gate IAM-5).
 KILLSWITCH_USERNAME="gate-iam-12-killswitch-$(date +%s)"
 KILLSWITCH_PASSWORD="Gate-IAM-12-$(date +%s)-test-only"
+# email/firstName/lastName/emailVerified/requiredActions:[] are all required
+# here, not decorative: Keycloak 26's default declarative user profile marks
+# an incomplete profile with a VERIFY_PROFILE required action at creation
+# time, which then makes password-grant login fail with "Account is not
+# fully set up" (resolve_required_actions) even though the credential
+# itself is valid -- a real behavior confirmed against a live Keycloak
+# instance's own event log, not assumed.
 KILLSWITCH_CREATE_RESPONSE=$(curl -s --max-time 30 -o /tmp/killswitch-create-response.txt -w "%{http_code}" -X POST \
   -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
   "$KC_URL/admin/realms/$REALM/users" \
-  -d "{\"username\":\"$KILLSWITCH_USERNAME\",\"enabled\":true,\"credentials\":[{\"type\":\"password\",\"value\":\"$KILLSWITCH_PASSWORD\",\"temporary\":false}]}")
+  -d "{\"username\":\"$KILLSWITCH_USERNAME\",\"email\":\"$KILLSWITCH_USERNAME@example.invalid\",\"firstName\":\"Gate\",\"lastName\":\"IAM12\",\"emailVerified\":true,\"enabled\":true,\"requiredActions\":[],\"credentials\":[{\"type\":\"password\",\"value\":\"$KILLSWITCH_PASSWORD\",\"temporary\":false}]}")
 if [ "$KILLSWITCH_CREATE_RESPONSE" = "201" ]; then
   pass "created a throwaway test user for the kill-switch smoke test"
 else
