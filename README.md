@@ -56,16 +56,22 @@
   "kill switch" — disable identity + revoke sessions — end-to-end against a real Keycloak
   instance; most of this 213-section ADR is `baobab-cp`/domain-engine territory, not
   `baobab-iam`'s — see
-  [Gate IAM-12 scope](./docs/governance/gate-iam-12-identity-lifecycle-scope.md) §1, §5.
+  [Gate IAM-12 scope](./docs/governance/gate-iam-12-identity-lifecycle-scope.md) §1, §5. Gate
+  IAM-13 (Audit/Observability, ADR-0017) phase 1 proved — against a real Keycloak instance,
+  not by trusting upstream claims — that Gate IAM-12's admin-event logging actually redacts
+  secrets (a plaintext-password marker never appears in the resulting audit record) and that
+  credential revocation is captured in the audit trail; most of this 205-section ADR is
+  `baobab-cp`/domain-engine/infrastructure territory — see
+  [Gate IAM-13 scope](./docs/governance/gate-iam-13-audit-observability-scope.md) §1, §4.
 - **Next:** Finish Gate IAM-2 (environment separation, MFA/Organizations baseline), Gate
   IAM-5's remaining phases (`baobab-cms` OIDC wiring, `baobab-cp` role-aware admin
   authorization), Gate IAM-6's remaining phases, the shared Gate IAM-7/IAM-9
   customer-OIDC-termination decision, Gate IAM-8's supplier-domain ownership decision, Gate
   IAM-10's remaining phases (closing its ADR-0014 §9 deviation, AD_User/Role/Client/Org
-  provisioning), Gate IAM-11's remaining phases, and Gate IAM-12's open architectural fork
+  provisioning), Gate IAM-11's remaining phases, Gate IAM-12's open architectural fork
   (whether IAM needs a custom Keycloak event-listener SPI or `baobab-cp` should poll its
-  native Admin Events API), then Gates IAM-13 through IAM-16 now that the identity spine
-  underneath them is sound.
+  native Admin Events API), and Gate IAM-13's deferred retention-policy decision, then Gates
+  IAM-14 through IAM-16 now that the identity spine underneath them is sound.
 
 ---
 
