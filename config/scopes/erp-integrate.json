@@ -1,0 +1,22 @@
+{
+  "name": "erp:integrate",
+  "description": "Gate IAM-10 (ADR-0014 §111): grants permission to call baobab-erp's own application-service integration boundary (/context/resolve*, /mapping/resolve*), whose HTTP endpoints previously trusted network location alone. Distinct from context:resolve, whose aud=baobab-control-plane mapper is for baobab-cp, not baobab-erp -- a token scoped for the Control Plane SHALL NOT also work against ERP (ADR-0007 §§24-25).",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "true",
+    "display.on.consent.screen": "false"
+  },
+  "protocolMappers": [
+    {
+      "name": "audience-baobab-erp",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.custom.audience": "baobab-erp",
+        "id.token.claim": "false",
+        "access.token.claim": "true"
+      }
+    }
+  ]
+}

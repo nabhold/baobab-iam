@@ -392,6 +392,68 @@ if [ -n "$ORG_ID" ]; then
 fi
 rm -f /tmp/org-create-response.txt
 
+echo "== 14. ERP workforce SSO client (Gate IAM-10, ADR-0014 §6-9, §115) =="
+ERP_ADMIN_JSON=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/clients?clientId=baobab-erp-admin" | jq '.[0]')
+if [ "$ERP_ADMIN_JSON" = "null" ] || [ -z "$ERP_ADMIN_JSON" ]; then
+  fail "baobab-erp-admin is not provisioned"
+else
+  STANDARD_FLOW=$(echo "$ERP_ADMIN_JSON" | jq -r '.standardFlowEnabled')
+  BEARER_ONLY=$(echo "$ERP_ADMIN_JSON" | jq -r '.bearerOnly')
+  if [ "$STANDARD_FLOW" = "true" ] && [ "$BEARER_ONLY" = "false" ]; then
+    pass "baobab-erp-admin is a distinct SSO login client (standardFlow, not bearer-only)"
+  else
+    fail "baobab-erp-admin login config is wrong (standardFlow=$STANDARD_FLOW bearerOnly=$BEARER_ONLY)"
+  fi
+  DEFAULT_SCOPES=$(echo "$ERP_ADMIN_JSON" | jq -r '.defaultClientScopes | join(",")')
+  if [[ "$DEFAULT_SCOPES" == *"actor-type-human"* ]]; then
+    pass "baobab-erp-admin has the actor-type-human default scope attached"
+  else
+    fail "baobab-erp-admin is missing the actor-type-human default scope (scopes: $DEFAULT_SCOPES)"
+  fi
+  # Deliberately different from baobab-trade-admin/baobab-cms-admin: verified
+  # directly against org.idempiere.ui.sso.oidc's source (idempiere/idempiere)
+  # that iDempiere's built-in OIDC plugin never sends a code_challenge, so
+  # requiring PKCE here would break every real login attempt.
+  PKCE_METHOD=$(echo "$ERP_ADMIN_JSON" | jq -r '.attributes["pkce.code.challenge.method"] // empty')
+  if [ -z "$PKCE_METHOD" ]; then
+    pass "baobab-erp-admin has no PKCE requirement (iDempiere's OIDC plugin does not support it)"
+  else
+    fail "baobab-erp-admin unexpectedly requires PKCE ($PKCE_METHOD), which iDempiere's stock OIDC plugin cannot satisfy"
+  fi
+fi
+ERP_ENGINE_CLIENT_COUNT=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/clients?clientId=baobab-erp" | jq 'length')
+if [ "$ERP_ENGINE_CLIENT_COUNT" = "1" ]; then
+  pass "baobab-erp (engine) and baobab-erp-admin (workforce) remain distinct client registrations"
+else
+  fail "expected exactly one baobab-erp client alongside baobab-erp-admin, found $ERP_ENGINE_CLIENT_COUNT"
+fi
+ERP_WORKLOAD_SCOPES=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/clients?clientId=baobab-erp-workload" | jq -r '.[0].defaultClientScopes | join(",")')
+if [[ "$ERP_WORKLOAD_SCOPES" == *"erp:integrate"* ]]; then
+  pass "baobab-erp-workload carries the erp:integrate scope (ADR-0014 §111)"
+else
+  fail "baobab-erp-workload is missing the erp:integrate scope (scopes: $ERP_WORKLOAD_SCOPES)"
+fi
+ERP_INTEGRATE_TOKEN_RESPONSE=$(curl -s --max-time 30 -X POST \
+  "$KC_URL/realms/$REALM/protocol/openid-connect/token" \
+  -d "client_id=baobab-erp-workload" \
+  -d "client_secret=$WORKLOAD_SECRET" \
+  -d "grant_type=client_credentials" \
+  -d "scope=erp:integrate")
+ERP_INTEGRATE_ACCESS_TOKEN=$(echo "$ERP_INTEGRATE_TOKEN_RESPONSE" | jq -r '.access_token // empty')
+if [ -n "$ERP_INTEGRATE_ACCESS_TOKEN" ]; then
+  ERP_INTEGRATE_AUD=$(jwt_payload "$ERP_INTEGRATE_ACCESS_TOKEN" | jq -r 'if (.aud | type) == "array" then .aud[] else .aud end' | tr '\n' ',')
+  if [[ "$ERP_INTEGRATE_AUD" == *"baobab-erp"* ]]; then
+    pass "a baobab-erp-workload token requesting erp:integrate carries aud=baobab-erp"
+  else
+    fail "a baobab-erp-workload token requesting erp:integrate has aud='$ERP_INTEGRATE_AUD', expected it to include baobab-erp"
+  fi
+else
+  fail "could not obtain a baobab-erp-workload token with the erp:integrate scope"
+fi
+
 echo ""
 echo "== Summary: $PASS passed, $FAIL failed =="
 if [ "$FAIL" -gt 0 ]; then
