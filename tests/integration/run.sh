@@ -591,6 +591,81 @@ else
   fail "realm is missing adminEventsEnabled/adminEventsDetailsEnabled (enabled=$REALM_ADMIN_EVENTS_ENABLED details=$REALM_ADMIN_EVENTS_DETAILS_ENABLED)"
 fi
 
+echo "== 17. Audit redaction and credential-revocation audit (Gate IAM-13, ADR-0017 §94-98,§175,§179) =="
+# ADR-0017 §179 asks for an automated test proving secrets never appear in
+# captured logs -- Gate IAM-12's adminEventsDetailsEnabled=true stores each
+# admin action's request "representation" verbatim, so this is the one
+# place in this realm a raw password could plausibly leak. Keycloak's own
+# AdminEventBuilder calls StripSecretsUtils.stripSecrets() before storing
+# that representation (verified directly against keycloak/keycloak's
+# source) -- this proves that redaction actually holds against *this*
+# realm's real admin-events output, not just that upstream Keycloak claims
+# to do it.
+REDACTION_USERNAME="gate-iam-13-redaction-$(date +%s)"
+REDACTION_PASSWORD="Gate-IAM-13-redaction-marker-$(date +%s)-do-not-leak"
+REDACTION_CREATE_RESPONSE=$(curl -s --max-time 30 -o /tmp/redaction-create-response.txt -w "%{http_code}" -X POST \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  "$KC_URL/admin/realms/$REALM/users" \
+  -d "{\"username\":\"$REDACTION_USERNAME\",\"email\":\"$REDACTION_USERNAME@example.invalid\",\"firstName\":\"Gate\",\"lastName\":\"IAM13\",\"emailVerified\":true,\"enabled\":true,\"requiredActions\":[],\"credentials\":[{\"type\":\"password\",\"value\":\"$REDACTION_PASSWORD\",\"temporary\":false}]}")
+if [ "$REDACTION_CREATE_RESPONSE" = "201" ]; then
+  pass "created a throwaway test user carrying a distinctive marker password"
+else
+  fail "could not create the redaction test user (HTTP $REDACTION_CREATE_RESPONSE): $(cat /tmp/redaction-create-response.txt)"
+fi
+REDACTION_USER_ID=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KC_URL/admin/realms/$REALM/users?username=$REDACTION_USERNAME&exact=true" | jq -r '.[0].id // empty')
+if [ -n "$REDACTION_USER_ID" ]; then
+  # 1. The CREATE admin event (which carried the password in its request
+  # body) must not leak it in the stored representation.
+  CREATE_EVENTS=$(curl -s --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/admin-events?resourceTypes=USER&resourcePath=users/$REDACTION_USER_ID&operationTypes=CREATE")
+  if echo "$CREATE_EVENTS" | jq -e 'length >= 1' > /dev/null 2>&1 && \
+     ! echo "$CREATE_EVENTS" | grep -qF "$REDACTION_PASSWORD"; then
+    pass "the user-creation admin event does not leak the plaintext password (ADR-0017 §94-98,§179)"
+  else
+    fail "the user-creation admin event either wasn't recorded or leaked the plaintext password"
+  fi
+
+  # 2. A password reset must also not leak the new password.
+  RESET_PASSWORD_VALUE="Gate-IAM-13-reset-marker-$(date +%s)-do-not-leak"
+  curl -s --max-time 30 -o /dev/null -X PUT \
+    -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+    "$KC_URL/admin/realms/$REALM/users/$REDACTION_USER_ID/reset-password" \
+    -d "{\"type\":\"password\",\"value\":\"$RESET_PASSWORD_VALUE\",\"temporary\":false}"
+  RESET_EVENTS=$(curl -s --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/admin-events?resourceTypes=USER&resourcePath=users/$REDACTION_USER_ID/reset-password")
+  if echo "$RESET_EVENTS" | jq -e 'length >= 1' > /dev/null 2>&1 && \
+     ! echo "$RESET_EVENTS" | grep -qF "$RESET_PASSWORD_VALUE"; then
+    pass "an admin-initiated password reset does not leak the new plaintext password"
+  else
+    fail "the password-reset admin event either wasn't recorded or leaked the new plaintext password"
+  fi
+
+  # 3. Credential revocation audited (ADR-0017 §175 "credential revocation
+  # audited"; ADR-0016 §13).
+  PASSWORD_CREDENTIAL_ID=$(curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/users/$REDACTION_USER_ID/credentials" | jq -r '[.[] | select(.type == "password")][0].id // empty')
+  if [ -n "$PASSWORD_CREDENTIAL_ID" ]; then
+    curl -s --max-time 30 -o /dev/null -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" \
+      "$KC_URL/admin/realms/$REALM/users/$REDACTION_USER_ID/credentials/$PASSWORD_CREDENTIAL_ID"
+    CREDENTIAL_DELETE_EVENTS=$(curl -s --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" \
+      "$KC_URL/admin/realms/$REALM/admin-events?resourceTypes=USER&resourcePath=users/$REDACTION_USER_ID/credentials/$PASSWORD_CREDENTIAL_ID")
+    if echo "$CREDENTIAL_DELETE_EVENTS" | jq -e 'length >= 1' > /dev/null 2>&1; then
+      pass "credential revocation is captured in the admin audit trail (ADR-0017 §175)"
+    else
+      fail "deleting the password credential produced no admin-event record"
+    fi
+  else
+    fail "could not find the test user's password credential to delete"
+  fi
+
+  curl -s --max-time 30 -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KC_URL/admin/realms/$REALM/users/$REDACTION_USER_ID" > /dev/null
+else
+  fail "could not look up the redaction test user's id after creating it"
+fi
+rm -f /tmp/redaction-create-response.txt
+
 echo ""
 echo "== Summary: $PASS passed, $FAIL failed =="
 if [ "$FAIL" -gt 0 ]; then
